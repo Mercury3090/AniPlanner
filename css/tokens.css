@@ -1,0 +1,77 @@
+/* Design tokens. These mirror the Figma variables and text styles exactly. */
+:root {
+  /* Colour */
+  --color-background: #0f1115;
+  --color-surface: #1a1d24;
+  --color-surface-raised: #232731;
+  --color-border: #2b303a;
+  --color-border-strong: #6b7280;
+  --color-text: #f2f3f5;
+  --color-text-muted: #a9aeb8;
+  --color-primary: #f59e0b;
+  --color-primary-hover: #fbb02e;
+  --color-primary-pressed: #d98a06;
+  --color-on-primary: #0f1115;
+  --color-accent: #fdba74;
+  --color-success: #3dd68c;
+  --color-error: #ff6b6b;
+  --color-disabled-bg: #2b303a;
+  --color-disabled-text: #7a808c;
+  --color-skeleton: #2b303a;
+
+  /* Spacing */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+
+  /* Radius. Controls (buttons, chips, badges) share one shape. */
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --radius-control: var(--radius-pill);
+
+  /* Typography */
+  --font-heading: "Sora", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --text-h1: 2rem; /* 32 on mobile, 40 on desktop */
+  --lh-h1: 2.5rem;
+  --text-h2: 1.5rem; /* 24 on mobile, 28 on desktop */
+  --lh-h2: 2rem;
+  --text-h3: 1.125rem; /* 18 on mobile, 20 on desktop */
+  --lh-h3: 1.625rem;
+  --text-body: 1rem;
+  --lh-body: 1.5rem;
+  --text-caption: 0.875rem;
+  --lh-caption: 1.25rem;
+
+  /* Layout */
+  --layout-max: 1280px;
+  --page-margin: 1rem;
+  --gutter: 1rem;
+  --header-height: 64px;
+
+  /* Focus */
+  --focus-ring: 2px solid var(--color-accent);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --text-h1: 2.5rem;
+    --lh-h1: 3rem;
+    --text-h2: 1.75rem;
+    --lh-h2: 2.25rem;
+    --text-h3: 1.25rem;
+    --lh-h3: 1.75rem;
+    --page-margin: 2rem;
+    --gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --page-margin: 5rem;
+  }
+}

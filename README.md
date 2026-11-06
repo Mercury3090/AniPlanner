@@ -1,6 +1,6 @@
-# Watch Night Planner
+# AniPlanner
 
-Watch Night Planner helps anime fans choose what they feel like watching, shows exactly how long it will take, and turns their picks into an evening-by-evening schedule with a finish date.
+AniPlanner helps anime fans choose what they feel like watching, shows exactly how long it will take, and turns their picks into an evening-by-evening schedule with a finish date.
 
 Built for Interactive Media 3B (Advanced Web Development with GSAP). It implements the design and technical specification (PRD) submitted for Assignment 4.
 

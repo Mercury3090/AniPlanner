@@ -114,7 +114,7 @@ function genresHTML(item) {
 function renderItem(item) {
   state.item = item;
   state.synopsisExpanded = false;
-  el.detail.innerHTML = `
+  const markup = `
     <header class="detail__hero">
       <div class="detail__poster">${
         item.image
@@ -149,6 +149,7 @@ function renderItem(item) {
       <div id="related-body"></div>
     </section>`;
 
+  el.detail.innerHTML = markup;
   el.detail.removeAttribute("aria-busy");
   document.title = `${item.title} | AniPlanner`;
   const description = document.querySelector('meta[name="description"]');

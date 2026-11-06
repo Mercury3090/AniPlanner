@@ -23,13 +23,36 @@
     <header id="site-header"></header>
 
     <main id="main" class="page container" tabindex="-1">
-      <h1>Your saved plans</h1>
-      <p class="muted">Plans you save are stored in this browser. No account needed.</p>
+      <div class="page-header">
+        <div>
+          <h1 id="saved-heading" tabindex="-1">Your saved plans</h1>
+          <p class="muted">Plans you save are stored in this browser. No account needed.</p>
+        </div>
+        <button type="button" id="new-plan" class="btn btn--primary">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+          New plan
+        </button>
+      </div>
 
+      <div id="banner-region"></div>
+      <ul id="plans" class="plan-grid"></ul>
+      <div id="empty-region"></div>
+
+      <dialog id="new-plan-dialog" class="dialog" aria-labelledby="dialog-title" aria-describedby="dialog-text">
+        <form method="dialog">
+          <h2 id="dialog-title">Start a new plan?</h2>
+          <p id="dialog-text"></p>
+          <div class="dialog__actions">
+            <button type="submit" value="cancel" class="btn btn--secondary" autofocus>Cancel</button>
+            <button type="submit" value="confirm" class="btn btn--primary">Start new plan</button>
+          </div>
+        </form>
+      </dialog>
     </main>
 
     <footer id="site-footer"></footer>
     <noscript><p class="container">This site needs JavaScript to load anime data.</p></noscript>
     <script type="module" src="js/layout.js"></script>
+    <script type="module" src="js/pages/saved.js"></script>
   </body>
 </html>

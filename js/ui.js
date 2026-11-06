@@ -97,7 +97,7 @@ export function attachImageFallback(root) {
     (event) => {
       const img = event.target;
       if (!(img instanceof HTMLImageElement)) return;
-      const holder = img.closest(".card__media, .detail__poster, .related-card__media");
+      const holder = img.closest(".card__media, .detail__poster, .related-card__media, .plan-card__poster");
       if (holder) holder.innerHTML = placeholderHTML();
     },
     true
@@ -123,14 +123,17 @@ export function skeletonCardsHTML(count = 8) {
 /**
  * Message banner. Errors use role="alert" so they are announced at once,
  * other tones use role="status".
- * @param {{tone: "error" | "warning" | "success", message: string, actionLabel?: string, action?: string}} opts
+ * @param {{tone: "error" | "warning" | "success", message: string, actionLabel?: string, action?: string, href?: string}} opts
  */
-export function bannerHTML({ tone, message, actionLabel, action = "retry" }) {
+export function bannerHTML({ tone, message, actionLabel, action = "retry", href }) {
   const iconName = tone === "success" ? "circle-check" : tone === "warning" ? "clock" : "alert";
   const role = tone === "error" ? "alert" : "status";
-  const button = actionLabel
-    ? `<button type="button" class="btn btn--secondary btn--small" data-action="${action}">${escapeHtml(actionLabel)}</button>`
-    : "";
+  let button = "";
+  if (actionLabel && href) {
+    button = `<a class="btn btn--secondary btn--small" href="${escapeHtml(href)}">${escapeHtml(actionLabel)}</a>`;
+  } else if (actionLabel) {
+    button = `<button type="button" class="btn btn--secondary btn--small" data-action="${action}">${escapeHtml(actionLabel)}</button>`;
+  }
   return `<div class="banner banner--${tone}" role="${role}">${icon(iconName)}<p class="banner__text">${escapeHtml(message)}</p>${button}</div>`;
 }
 

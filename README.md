@@ -17,7 +17,6 @@ Built for Interactive Media 3B (Advanced Web Development with GSAP). It implemen
 ## Tech
 
 - HTML, CSS and JavaScript (ES modules), no build step
-- [GSAP](https://gsap.com) with ScrollTrigger for motion
 - [Tenrai](https://tenrai.org), a free keyless mirror of MyAnimeList data that serves the Jikan v4 format, for all anime data (the original public Jikan API closed on 1 October 2026)
 - `localStorage` for the current plan and saved plans, `sessionStorage` for API caching
 
@@ -60,7 +59,8 @@ js/
   ui.js             Markup builders: cards, badges, banners, empty states, skeletons
   detail.js         Pure helpers for the detail page (id parsing, runtime strip, trailer safety)
   plan-actions.js   Add or remove a title from the plan, with the Undo toast
-  pages/            One controller per page (discover.js, anime.js, ...)
+  saved-model.js    Turns a saved plan into the numbers shown on its card (pure functions)
+  pages/            One controller per page (home.js, discover.js, anime.js, planner.js, saved.js)
 assets/             Favicon and images
 tests/              Unit tests for the maths and the API client
 ```
@@ -75,6 +75,17 @@ The API's public limit is about 3 requests per second and 60 per minute, so `js/
 - A 429 or server error is retried once after 2 seconds, then reported.
 - If a live request fails, recent cached results can still be shown.
 - Every response is converted into one consistent shape before the interface uses it.
+
+## The View plan pill
+
+On Home, Discover and the detail pages, a "View plan" pill appears in the bottom-right corner as soon as the plan has a title. It shows how many titles are in the plan, pops when one is added, and links to the Planner. It matters most on a phone, where the navigation sits behind the menu button. Toasts stack above it so the two never overlap.
+
+## How Home works
+
+- The hero shows the three most popular titles as posters, and "Airing now" shows four titles from the current season. That is two API calls in total, and each fails on its own: if the posters can't load, the hero falls back to placeholders and the text still carries the page; if Airing now fails, it shows a red error banner with Retry.
+- Airing now uses the same cards as Discover, so a title can be added to the plan straight from the home page.
+- "Start a plan" goes to Discover, and "How it works" scrolls to the three-step explanation on the same page.
+- On a phone, the posters sit above the headline and the buttons fill the width.
 
 ## How Discover works
 
@@ -95,6 +106,27 @@ The API's public limit is about 3 requests per second and 60 per minute, so `js/
 - Genres are shown as plain tags.
 - The Back link returns to Discover with the filters the user had.
 
+## How the Planner page works
+
+- Pick the weekdays you watch (at least one must stay selected) and the hours per evening, in half-hour steps from 0.5 to 8. Both are stored in the browser.
+- Titles load one by one through the same request queue as the rest of the site, with a skeleton row for each. If one fails, that row turns red with a Retry button, and the rest of the plan is still calculated. A title that no longer exists offers Remove only.
+- The summary shows total runtime, evenings needed and the finish date. It explains anything it leaves out: ongoing titles, titles with no listed episode length, titles that failed to load, and plans that run for more than a year.
+- The schedule lists each evening with its real date and what is watched, in the order of the list. The first 14 are shown, with a button to show them all.
+- Removing a title shows a red toast with Undo, and Undo puts the title back in the same position so the watch order is unchanged.
+- Save plan keeps the current plan under an optional name, shows a green confirmation with a link to Saved plans, and leaves the plan on screen.
+- Once a plan is saved, the button becomes a disabled "Saved" and a line reads "Saved as ...". This stays across reloads and disappears as soon as the titles, their order, the evenings or the hours change, so the page always shows whether the plan on screen is safely saved.
+- Clear plan empties the list (keeping the chosen evenings and hours) and offers Undo for six seconds, which restores every title in its original order. It sits away from Save so it can't be hit by accident, and clearing a plan that was already saved never touches the saved copy.
+- When a title is removed, keyboard focus moves to the next remove button, so keyboard users don't lose their place.
+
+## How Saved plans works
+
+- Plans live in `localStorage`, so the page makes no API calls and shows instantly. When a plan is saved, a small snapshot of its totals and poster images is kept with it.
+- Each card shows the title count, total runtime and finish date. The finish date is recalculated from today every time the page loads, using the weekdays and hours saved with the plan, so it never goes stale.
+- Plans saved before snapshots existed still appear and explain that they need opening to show their runtime.
+- Open loads the plan into the Planner. Delete shows a toast with Undo for five seconds, and Undo restores the plan in the same position.
+- New plan only asks for confirmation when the current plan has titles and matches no saved plan, so work is never lost silently. The confirmation is an accessible dialog: Escape or clicking outside cancels, and focus starts on Cancel.
+- If the browser blocks storage, the page says so instead of failing silently.
+
 ## How the planner works
 
 - Total runtime is episodes multiplied by minutes per episode, added up across the plan.
@@ -111,11 +143,10 @@ The API's public limit is about 3 requests per second and 60 per minute, so `js/
 - Tap targets of at least 44 by 44 pixels
 - Status is never shown by colour alone: badges and messages pair an icon with text
 - Messages are announced to screen readers
-- Motion is reduced or removed when the user prefers reduced motion
+- Motion in the interface is limited to short CSS transitions, and is switched off when the user prefers reduced motion
 
 ## Credits
 
 - Anime data and poster images: [Tenrai](https://tenrai.org), serving [MyAnimeList](https://myanimelist.net) data in the Jikan v4 format
 - Fonts: [Sora](https://fonts.google.com/specimen/Sora) and [Inter](https://fonts.google.com/specimen/Inter) (Google Fonts)
 - Icons: outline icon set based on the style of [Tabler Icons](https://tabler.io/icons)
-- Animation: [GSAP](https://gsap.com)

@@ -4,6 +4,7 @@
 
 import { icon } from "./icons.js";
 import { getDraft, onChange } from "./storage.js";
+import { plural } from "./utils.js";
 
 const LINKS = [
   { key: "home", href: "index.html", label: "Home" },
@@ -72,6 +73,41 @@ function setupMenu(header) {
   setOpen(false);
 }
 
+/* ---------- "View plan" pill ---------- */
+
+// Shown on the pages where titles are added, so the next step is always one tap away.
+const PILL_PAGES = new Set(["home", "discover"]);
+let pill = null;
+let pillCount = 0;
+
+function setupPlanPill() {
+  if (!PILL_PAGES.has(document.body.dataset.page ?? "")) return;
+  pill = document.createElement("a");
+  pill.className = "plan-pill";
+  pill.href = "planner.html";
+  pill.hidden = true;
+  document.body.append(pill);
+  updatePlanPill();
+  onChange(updatePlanPill);
+}
+
+function updatePlanPill() {
+  const count = getDraft().titleIds.length;
+  const grew = count > pillCount;
+  pill.hidden = count === 0;
+  pill.setAttribute("aria-label", `View plan, ${plural(count, "title")}`);
+  pill.innerHTML = `${icon("calendar")}<span>View plan</span><span class="nav-count" aria-hidden="true">${count}</span>`;
+  document.body.classList.toggle("has-plan-pill", count > 0);
+
+  // A small pop when a title is added (not when the page first loads with a plan already in it).
+  if (grew && pillCount !== null) {
+    pill.classList.remove("plan-pill--pop");
+    void pill.offsetWidth; // restart the animation
+    pill.classList.add("plan-pill--pop");
+  }
+  pillCount = count;
+}
+
 function updateCount() {
   const el = document.querySelector("[data-plan-count]");
   if (!el) return;
@@ -137,6 +173,8 @@ function init() {
 
   updateCount();
   onChange(updateCount);
+  pillCount = getDraft().titleIds.length;
+  setupPlanPill();
 }
 
 if (document.readyState === "loading") {

@@ -156,6 +156,10 @@
 .btn--text:hover { text-decoration: underline; }
 .btn--text:active { color: var(--color-primary-pressed); }
 
+.btn--quiet { background: transparent; border-color: var(--color-border-strong); color: var(--color-text); }
+.btn--quiet:hover { background: var(--color-surface-raised); }
+.btn--quiet:active { background: var(--color-border); }
+
 .btn--small { min-height: 44px; padding: 0.5rem 1rem; font-size: var(--text-caption); }
 .btn--block { width: 100%; }
 
@@ -385,3 +389,50 @@
 }
 .toast--success .icon { color: var(--color-success); }
 .toast--removed .icon { color: var(--color-error); }
+
+/* ---------- Dialog ---------- */
+.dialog {
+  width: min(92vw, 28rem);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.dialog::backdrop { background: rgba(0, 0, 0, 0.65); }
+.dialog h2 { margin-bottom: var(--space-sm); }
+.dialog p { color: var(--color-text-muted); }
+.dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
+@media (max-width: 479px) { .dialog__actions .btn { width: 100%; } }
+
+/* ---------- "View plan" pill ---------- */
+.plan-pill {
+  position: fixed;
+  right: var(--page-margin);
+  bottom: var(--space-lg);
+  z-index: 55;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 48px;
+  padding: 0.5rem 0.75rem 0.5rem 1.25rem;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transition: background-color 0.2s;
+}
+.plan-pill:hover { background: var(--color-primary-hover); }
+.plan-pill:active { background: var(--color-primary-pressed); }
+.plan-pill .nav-count { background: var(--color-on-primary); color: var(--color-primary); }
+.plan-pill--pop { animation: pill-pop 0.35s ease-out; }
+@keyframes pill-pop {
+  0% { transform: translateY(14px) scale(0.9); opacity: 0; }
+  60% { transform: translateY(0) scale(1.05); opacity: 1; }
+  100% { transform: none; }
+}
+/* Toasts sit above the pill, and the footer leaves room for it. */
+.has-plan-pill .toast-region { bottom: calc(var(--space-lg) + 4rem); }
+.has-plan-pill .site-footer { padding-bottom: 4.5rem; }

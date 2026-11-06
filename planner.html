@@ -24,12 +24,66 @@
 
     <main id="main" class="page container" tabindex="-1">
       <h1>Your watch plan</h1>
-      <p class="muted">Add titles, choose your evenings, and see when you will finish.</p>
+      <p class="muted">Add titles, choose your evenings, and see exactly when you will finish.</p>
 
+      <div id="banner-region"></div>
+
+      <section class="panel planner-settings" aria-labelledby="settings-heading">
+        <h2 id="settings-heading" class="visually-hidden">Your evenings</h2>
+        <fieldset class="filter-group">
+          <legend>Evenings you watch</legend>
+          <div id="day-chips" class="cluster"></div>
+          <p id="days-hint" class="field__error" role="status" hidden></p>
+        </fieldset>
+        <div class="field">
+          <span class="field__label" id="hours-label">Hours per evening</span>
+          <div class="stepper" role="group" aria-labelledby="hours-label">
+            <button type="button" id="hours-down" class="icon-btn" data-step="-1" aria-label="Decrease hours per evening">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l14 0"/></svg>
+            </button>
+            <output id="hours-value" class="stepper__value" for="hours-down hours-up" aria-live="polite"></output>
+            <button type="button" id="hours-up" class="icon-btn" data-step="1" aria-label="Increase hours per evening">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 5l0 14"/><path d="M5 12l14 0"/></svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="planner-layout">
+        <section class="planner-main" aria-labelledby="titles-heading">
+          <h2 id="titles-heading" tabindex="-1">Titles in your plan</h2>
+          <ul id="title-list" class="title-list"></ul>
+          <div id="empty-region"></div>
+          <div id="add-more" class="planner-add cluster" hidden>
+            <a class="btn btn--secondary" href="discover.html">Add another title</a>
+            <button type="button" id="clear-plan" class="btn btn--quiet">Clear plan</button>
+          </div>
+        </section>
+
+        <aside class="panel planner-summary" aria-labelledby="summary-heading">
+          <h2 id="summary-heading">Plan summary</h2>
+          <div id="summary"></div>
+          <p id="summary-announce" class="visually-hidden" role="status" aria-live="polite"></p>
+          <p id="saved-state" class="saved-state" role="status" hidden></p>
+          <div id="save-name" class="field planner-save__name">
+            <label class="field__label" for="plan-name">Plan name (optional)</label>
+            <input id="plan-name" class="input" type="text" maxlength="40" autocomplete="off" />
+          </div>
+          <button type="button" id="save-plan" class="btn btn--primary btn--block">Save plan</button>
+        </aside>
+      </div>
+
+      <section id="schedule-section" class="planner-schedule" aria-labelledby="schedule-heading" hidden>
+        <h2 id="schedule-heading">Schedule</h2>
+        <p id="schedule-note" class="caption"></p>
+        <ol id="schedule" class="schedule"></ol>
+        <button type="button" id="schedule-toggle" class="btn btn--secondary" aria-expanded="false" hidden></button>
+      </section>
     </main>
 
     <footer id="site-footer"></footer>
     <noscript><p class="container">This site needs JavaScript to load anime data.</p></noscript>
     <script type="module" src="js/layout.js"></script>
+    <script type="module" src="js/pages/planner.js"></script>
   </body>
 </html>

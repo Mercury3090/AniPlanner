@@ -124,3 +124,55 @@ export function buildSchedule(entries, minutesPerEvening, days, startDate = new 
 export function finishDateOf(evenings) {
   return evenings.length ? evenings[evenings.length - 1].date : null;
 }
+
+/* ---------- Planner controls (pure, so they can be tested) ---------- */
+
+/** Days shown Monday to Sunday. `day` is the JavaScript weekday number (Sunday = 0). */
+export const WEEK = [
+  { day: 1, label: "Mon", name: "Monday" },
+  { day: 2, label: "Tue", name: "Tuesday" },
+  { day: 3, label: "Wed", name: "Wednesday" },
+  { day: 4, label: "Thu", name: "Thursday" },
+  { day: 5, label: "Fri", name: "Friday" },
+  { day: 6, label: "Sat", name: "Saturday" },
+  { day: 0, label: "Sun", name: "Sunday" },
+];
+
+export const MIN_HOURS = 0.5;
+export const MAX_HOURS = 8;
+
+/**
+ * Moves hours per evening up or down by half an hour, within limits.
+ * @param {number} current
+ * @param {1 | -1} direction
+ */
+export function stepHours(current, direction) {
+  const base = Number(current) > 0 ? Number(current) : 2;
+  const halves = base * 2;
+  // Move to the next half-hour mark in the chosen direction, even if the stored value sits between marks.
+  const next = direction > 0 ? Math.floor(halves + 1e-9) + 1 : Math.ceil(halves - 1e-9) - 1;
+  return Math.min(MAX_HOURS, Math.max(MIN_HOURS, next / 2));
+}
+
+/** "2" or "1.5" */
+export function formatHours(hours) {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
+
+/**
+ * Adds or removes a weekday. At least one evening must stay selected,
+ * so removing the last one is refused.
+ * @param {number[]} days
+ * @param {number} day
+ * @returns {{days: number[], blocked: boolean}}
+ */
+export function toggleDay(days, day) {
+  const set = new Set(days);
+  if (set.has(day)) {
+    if (set.size === 1) return { days: [...set], blocked: true };
+    set.delete(day);
+  } else {
+    set.add(day);
+  }
+  return { days: [...set].sort((a, b) => a - b), blocked: false };
+}

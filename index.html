@@ -23,16 +23,56 @@
     <header id="site-header"></header>
 
     <main id="main" class="page container" tabindex="-1">
-      <h1>Plan your next watch night</h1>
-      <p class="muted">Pick what you feel like watching and see exactly how long it will take.</p>
-      <div class="cluster">
-        <a class="btn btn--primary" href="discover.html">Start a plan</a>
-        <a class="btn btn--secondary" href="discover.html">Browse anime</a>
-      </div>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__text">
+          <h1 id="hero-title" class="hero__title">Plan your next watch night</h1>
+          <p class="hero__lead">Pick what you feel like watching and see exactly how long it will take.</p>
+          <div class="cluster hero__actions">
+            <a class="btn btn--primary" href="discover.html">Start a plan</a>
+            <a class="btn btn--secondary" href="#how-it-works">How it works</a>
+          </div>
+        </div>
+        <ul id="hero-posters" class="hero-posters" aria-label="Popular anime"></ul>
+      </section>
+
+      <section class="home-section" aria-labelledby="airing-title">
+        <div class="section__header">
+          <h2 id="airing-title">Airing now</h2>
+          <a href="discover.html">See all anime</a>
+        </div>
+        <div id="airing-banner"></div>
+        <ul id="airing" class="card-grid" aria-label="Anime airing now"></ul>
+        <div id="airing-empty"></div>
+      </section>
+
+      <section id="how-it-works" class="home-section" aria-labelledby="how-title">
+        <h2 id="how-title">How it works</h2>
+        <ol class="steps" role="list">
+          <li class="step">
+            <span class="step__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/></svg></span>
+            <p class="step__n">Step 1</p>
+            <h3>Pick titles</h3>
+            <p>Browse by mood or watch time, and add whatever you feel like watching.</p>
+          </li>
+          <li class="step">
+            <span class="step__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></span>
+            <p class="step__n">Step 2</p>
+            <h3>See the runtime</h3>
+            <p>Real episode counts and lengths show exactly how long each show takes.</p>
+          </li>
+          <li class="step">
+            <span class="step__icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg></span>
+            <p class="step__n">Step 3</p>
+            <h3>Get your plan</h3>
+            <p>Choose your evenings and get a schedule with a finish date.</p>
+          </li>
+        </ol>
+      </section>
     </main>
 
     <footer id="site-footer"></footer>
     <noscript><p class="container">This site needs JavaScript to load anime data.</p></noscript>
     <script type="module" src="js/layout.js"></script>
+    <script type="module" src="js/pages/home.js"></script>
   </body>
 </html>

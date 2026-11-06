@@ -5,6 +5,7 @@
 import { icon } from "./icons.js";
 import { getDraft, onChange } from "./storage.js";
 import { plural } from "./utils.js";
+import { pillPop, toastIn, toastOut } from "./animations.js";
 
 const LINKS = [
   { key: "home", href: "index.html", label: "Home" },
@@ -102,8 +103,11 @@ function updatePlanPill() {
   // A small pop when a title is added (not when the page first loads with a plan already in it).
   if (grew && pillCount !== null) {
     pill.classList.remove("plan-pill--pop");
-    void pill.offsetWidth; // restart the animation
-    pill.classList.add("plan-pill--pop");
+    // GSAP does the pop; if it is unavailable the CSS animation is the fallback.
+    if (!pillPop(pill)) {
+      void pill.offsetWidth; // restart the animation
+      pill.classList.add("plan-pill--pop");
+    }
   }
   pillCount = count;
 }
@@ -146,13 +150,14 @@ export function showToast(message, { action, duration = 4000, tone = "success" }
     button.textContent = action.label;
     button.addEventListener("click", () => {
       action.onClick();
-      toast.remove();
+      toastOut(toast, () => toast.remove());
     });
     toast.append(button);
   }
 
   region.append(toast);
-  window.setTimeout(() => toast.remove(), duration);
+  toastIn(toast);
+  window.setTimeout(() => toastOut(toast, () => toast.remove()), duration);
   return toast;
 }
 

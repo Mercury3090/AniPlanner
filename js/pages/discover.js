@@ -6,6 +6,7 @@ import { api, describeError } from "../api.js";
 import { MOODS, RUNTIME_RANGES, SORTS, findMood, findRange, findSort, genreIdsForMood, matchesRuntime } from "../moods.js";
 import { isInDraft, onChange } from "../storage.js";
 import { debounce, plural } from "../utils.js";
+import { crossfade, revealCards } from "../animations.js";
 import { togglePlan } from "../plan-actions.js";
 import {
   animeCardHTML,
@@ -49,6 +50,8 @@ const state = {
   items: [],
   loading: false,
   autoPages: 0,
+  seen: new Set(), // ids whose card has already animated in
+  freshLoad: false, // true until the first render after a new search or filter
   controller: null,
   genres: null,
   lastError: null,
@@ -145,6 +148,8 @@ async function load({ append = false } = {}) {
     state.items = [];
     state.page = 0;
     state.autoPages = 0;
+    state.seen = new Set();
+    state.freshLoad = true;
     el.results.innerHTML = skeletonCardsHTML(8);
     el.status.textContent = "Loading titles";
     el.more.hidden = true;
@@ -200,7 +205,15 @@ async function ensureEnough() {
 
 function render({ focusId } = {}) {
   const items = visibleItems();
-  el.results.innerHTML = items.map((item) => animeCardHTML(item, { inPlan: isInDraft(item.id) })).join("");
+  const paint = () => {
+    el.results.innerHTML = items.map((item) => animeCardHTML(item, { inPlan: isInDraft(item.id) })).join("");
+  };
+  // The first render after a new search: the skeleton fades out while the cards rise in.
+  // Later renders (Load more, filter chips) only animate cards that are new.
+  if (state.freshLoad) crossfade(el.results, paint, { fadeContent: false });
+  else paint();
+  state.freshLoad = false;
+  revealCards(el.results, state.seen);
   const clientRange = state.runtime && !findRange(state.runtime)?.server;
   el.note.hidden = !clientRange || items.length === 0;
   el.more.hidden = !state.hasNext || Boolean(state.lastError && items.length === 0);

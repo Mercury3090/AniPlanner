@@ -17,6 +17,7 @@ Built for Interactive Media 3B (Advanced Web Development with GSAP). It implemen
 ## Tech
 
 - HTML, CSS and JavaScript (ES modules), no build step
+- [GSAP](https://gsap.com) 3 with ScrollTrigger for motion, bundled in `js/vendor`
 - [Tenrai](https://tenrai.org), a free keyless mirror of MyAnimeList data that serves the Jikan v4 format, for all anime data (the original public Jikan API closed on 1 October 2026)
 - `localStorage` for the current plan and saved plans, `sessionStorage` for API caching
 
@@ -53,6 +54,8 @@ js/
   planner-core.js   Runtime, totals and schedule maths (pure functions)
   storage.js        localStorage layer for the draft plan and saved plans
   utils.js          Duration parsing, formatting and helpers
+  animations.js     All GSAP animation (timeline, ScrollTrigger, tweens), with reduced-motion handling
+  vendor/           GSAP and ScrollTrigger, bundled so the site never depends on a CDN
   icons.js          Inline SVG icon set
   layout.js         Shared header and footer, mobile menu, toast helper
   moods.js          Mood, watch-time range and sort definitions for Discover
@@ -135,6 +138,25 @@ On Home, Discover and the detail pages, a "View plan" pill appears in the bottom
 - If the minutes per episode are missing, 24 is used and the figure is marked as an estimate.
 - The schedule uses the weekdays the user chooses. Titles are watched in order and can carry over into the next evening, so every evening has a real date and the last one is the finish date.
 
+## Motion
+
+All animation lives in `js/animations.js`. The page scripts say when something should animate, and that file decides how. Every animation uses only `transform` and `opacity`.
+
+| Animation | Where | How |
+| --- | --- | --- |
+| Hero reveal | Home | A GSAP timeline: headline, lead, buttons, then the posters, staggered, about one second in total (`power3.out`) |
+| Cards and steps rise in | Home, Discover | ScrollTrigger batches fade and lift items in as they reach the lower part of the screen. Only new cards animate, so Load more and filter changes never replay the cards already shown |
+| Skeleton to content | Home, Discover, detail | The skeleton is copied over the container and fades out while the real content fades in (0.4s, `sine.inOut`), so nothing jumps |
+| Evenings fill | Planner | Each evening's bar grows from the left with a stagger (`back.out(1.4)`), and the total runtime and evenings count up from their previous values |
+| Confirmations | Everywhere | The Add button icon pops, toasts slide in and fade out, and the View plan pill pops when a title is added |
+
+How it stays safe:
+
+- **Reduced motion.** If the visitor prefers reduced motion, nothing slides, scales or counts. The hero text still appears with a quick fade, and everything else is simply there.
+- **No GSAP, no problem.** If GSAP does not load, every function does nothing and the page is already fully visible. The hero text is held back only while GSAP is about to reveal it, and is released after four seconds at the latest.
+- **Screen readers.** Numbers that count up are not a live region, so a screen reader never reads the in-between values. The finished result is announced once from a hidden message.
+- **Always interactive.** The skeleton copy used for the crossfade ignores clicks and is hidden from assistive technology, so the page can be used while it fades.
+
 ## Accessibility
 
 - Semantic landmarks, one `h1` per page, and a skip link
@@ -143,10 +165,11 @@ On Home, Discover and the detail pages, a "View plan" pill appears in the bottom
 - Tap targets of at least 44 by 44 pixels
 - Status is never shown by colour alone: badges and messages pair an icon with text
 - Messages are announced to screen readers
-- Motion in the interface is limited to short CSS transitions, and is switched off when the user prefers reduced motion
+- Motion is reduced or removed when the user prefers reduced motion, and never hides content if it fails
 
 ## Credits
 
 - Anime data and poster images: [Tenrai](https://tenrai.org), serving [MyAnimeList](https://myanimelist.net) data in the Jikan v4 format
 - Fonts: [Sora](https://fonts.google.com/specimen/Sora) and [Inter](https://fonts.google.com/specimen/Inter) (Google Fonts)
 - Icons: outline icon set based on the style of [Tabler Icons](https://tabler.io/icons)
+- Animation: [GSAP](https://gsap.com) and ScrollTrigger, used under the [GSAP standard license](https://gsap.com/standard-license)

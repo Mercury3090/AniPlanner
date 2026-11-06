@@ -4,6 +4,7 @@
 import { icon } from "./icons.js";
 import { escapeHtml, formatMinutes } from "./utils.js";
 import { runtimeOf } from "./planner-core.js";
+import { popIcon } from "./animations.js";
 
 /** Status badge: always an icon plus text, never colour alone. */
 export function statusBadgeHTML(item) {
@@ -59,6 +60,7 @@ export function setAddButtonState(button, item, inPlan) {
   button.innerHTML = fresh.innerHTML;
   button.setAttribute("aria-label", fresh.getAttribute("aria-label"));
   button.dataset.inPlan = String(inPlan);
+  popIcon(button);
 }
 
 /**

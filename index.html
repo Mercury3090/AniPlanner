@@ -17,6 +17,19 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/pages.css" />
+    <script>
+      // The hero text starts hidden only when GSAP is about to reveal it. If GSAP has not
+      // taken over after 4 seconds, everything is shown anyway.
+      (function () {
+        var root = document.documentElement;
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          root.classList.add("has-motion");
+          setTimeout(function () { root.classList.remove("has-motion"); }, 4000);
+        }
+      })();
+    </script>
+    <script src="js/vendor/gsap.min.js" defer></script>
+    <script src="js/vendor/ScrollTrigger.min.js" defer></script>
   </head>
   <body data-page="home">
     <a class="skip-link" href="#main">Skip to content</a>

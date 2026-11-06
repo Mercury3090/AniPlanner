@@ -509,3 +509,9 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .saved-state .icon { flex: none; }
 .saved-state a { color: var(--color-success); }
 
+/* ---------- Motion ---------- */
+/* The hero text is held back only while GSAP is about to reveal it. The class is removed
+   by the animation code, by reduced motion, or after 4 seconds, so nothing stays hidden. */
+.has-motion .hero__title,
+.has-motion .hero__lead,
+.has-motion .hero__actions { opacity: 0; }

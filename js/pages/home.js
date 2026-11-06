@@ -6,6 +6,7 @@ import { api, describeError } from "../api.js";
 import { isInDraft, onChange } from "../storage.js";
 import { togglePlan } from "../plan-actions.js";
 import { escapeHtml } from "../utils.js";
+import { crossfade, revealCards, revealHero, revealOnScroll } from "../animations.js";
 import { animeCardHTML, attachImageFallback, bannerHTML, emptyStateHTML, placeholderHTML, setAddButtonState, skeletonCardsHTML } from "../ui.js";
 
 const HERO_COUNT = 3;
@@ -18,7 +19,7 @@ const el = {
   empty: document.getElementById("airing-empty"),
 };
 
-const state = { airing: [] };
+const state = { airing: [], seen: new Set() };
 
 /* ---------- Hero posters ---------- */
 
@@ -46,13 +47,15 @@ async function loadHero() {
     const { items } = await api.getTopAnime({ limit: HERO_COUNT });
     const shown = items.slice(0, HERO_COUNT);
     if (shown.length === 0) {
-      showPosterPlaceholders();
+      crossfade(el.posters, showPosterPlaceholders);
       return;
     }
-    el.posters.innerHTML = shown.map(posterItemHTML).join("");
-    el.posters.removeAttribute("aria-hidden");
+    crossfade(el.posters, () => {
+      el.posters.innerHTML = shown.map(posterItemHTML).join("");
+      el.posters.removeAttribute("aria-hidden");
+    });
   } catch {
-    showPosterPlaceholders();
+    crossfade(el.posters, showPosterPlaceholders);
   } finally {
     el.posters.removeAttribute("aria-busy");
   }
@@ -88,7 +91,8 @@ async function loadAiring() {
     if (result.stale) {
       el.banner.innerHTML = bannerHTML({ tone: "warning", message: "Showing saved results. We couldn't reach the server, so these may be out of date.", actionLabel: "Try again", action: "retry-airing" });
     }
-    renderAiring();
+    crossfade(el.airing, renderAiring, { fadeContent: false });
+    revealCards(el.airing, state.seen);
   } catch (error) {
     state.airing = [];
     el.airing.innerHTML = "";
@@ -136,5 +140,7 @@ el.posters.addEventListener(
 
 /* ---------- Start ---------- */
 
-loadHero();
+loadHero(); // puts the poster skeletons in place, so the reveal below has something to animate
+revealHero();
+revealOnScroll(document.querySelectorAll(".step"));
 loadAiring();

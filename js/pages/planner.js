@@ -21,6 +21,7 @@ import { icon } from "../icons.js";
 import { clearPlan, togglePlan } from "../plan-actions.js";
 import { showToast } from "../layout.js";
 import { attachImageFallback, bannerHTML, emptyStateHTML, placeholderHTML, runtimeLines } from "../ui.js";
+import { countUp, fillEvenings } from "../animations.js";
 
 const INITIAL_EVENINGS = 14;
 
@@ -49,6 +50,8 @@ const el = {
 };
 
 const state = {
+  counts: { minutes: 0, evenings: 0 }, // what the summary last showed, so numbers count from there
+  skipScheduleAnimation: false,
   summary: null, // totals from the latest render, saved with a plan
   items: new Map(), // id -> normalised title
   pending: new Set(), // ids being fetched
@@ -156,8 +159,19 @@ function renderSaveArea(isEmpty) {
 
 /* ---------- Summary: numbers count up, and the result is announced once ---------- */
 
+/** Counts the two numbers up from what the summary showed before. */
+function animateSummary(next) {
+  for (const dd of el.summary.querySelectorAll("[data-count]")) {
+    const kind = dd.dataset.count;
+    const key = kind === "minutes" ? "minutes" : "evenings";
+    countUp(dd, state.counts[key], Number(dd.dataset.to), kind, { prefix: dd.dataset.prefix ?? "", suffix: dd.dataset.suffix ?? "" });
+  }
+  state.counts = next;
+}
+
 /**
- * Screen readers hear the result from a hidden message whenever the plan changes.
+ * Screen readers hear the finished result once, from a hidden message. The visible
+ * numbers are not a live region, so counting up never reads out every step.
  */
 function announceSummary(isEmpty) {
   if (isEmpty) {
@@ -221,14 +235,16 @@ function summaryHTML({ totals, evenings, truncated, failedCount, pendingCount })
     {
       label: "Total runtime",
       value: hasTotal ? `${approx}${formatMinutes(totals.totalMinutes)}` : "Not available yet",
+      count: hasTotal ? `data-count="minutes" data-to="${totals.totalMinutes}" data-prefix="${approx}"` : "",
     },
     {
       label: "Evenings needed",
       value: hasTotal ? `${truncated ? `${evenings.length}+` : evenings.length}` : "Not available yet",
+      count: hasTotal ? `data-count="number" data-to="${evenings.length}" data-suffix="${truncated ? "+" : ""}"` : "",
     },
-    { label: "Finish date", value: hasTotal && finish && !truncated ? formatDate(finish) : "Not available yet" },
+    { label: "Finish date", value: hasTotal && finish && !truncated ? formatDate(finish) : "Not available yet", count: "" },
   ];
-  const rows = stats.map((s) => `<div class="summary__item"><dt>${s.label}</dt><dd>${escapeHtml(s.value)}</dd></div>`).join("");
+  const rows = stats.map((s) => `<div class="summary__item"><dt>${s.label}</dt><dd ${s.count}>${escapeHtml(s.value)}</dd></div>`).join("");
 
   const notes = [];
   if (pendingCount) notes.push(`Still loading ${plural(pendingCount, "title")}. The figures will update when they arrive.`);
@@ -308,7 +324,8 @@ function render() {
 
   const summaryChanged = setHTML(el.summary, isEmpty ? `<p class="muted">Your totals will appear here once you add a title.</p>` : summaryHTML({ totals, evenings, truncated, failedCount, pendingCount }));
   if (summaryChanged && pendingCount === 0) {
-    announceSummary(isEmpty);
+    announceSummary(isEmpty); // read the final numbers first, before anything starts counting
+    animateSummary(totals.totalMinutes > 0 && evenings.length > 0 ? { minutes: totals.totalMinutes, evenings: evenings.length } : { minutes: 0, evenings: 0 });
   }
   renderSaveArea(isEmpty);
 
@@ -316,7 +333,9 @@ function render() {
   el.scheduleSection.hidden = !showSchedule;
   if (showSchedule) {
     const visible = state.showAllEvenings ? evenings : evenings.slice(0, INITIAL_EVENINGS);
-    setHTML(el.schedule, visible.map((e, i) => eveningHTML(e, i, totals.minutesPerEvening)).join(""));
+    const scheduleChanged = setHTML(el.schedule, visible.map((e, i) => eveningHTML(e, i, totals.minutesPerEvening)).join(""));
+    if (scheduleChanged && pendingCount === 0 && !state.skipScheduleAnimation) fillEvenings(el.schedule);
+    state.skipScheduleAnimation = false;
     el.scheduleNote.textContent = `${plural(evenings.length, "evening")}${truncated ? " or more" : ""}, starting ${formatDate(evenings[0].date)}. Titles are watched in the order shown above.`;
     const more = evenings.length > INITIAL_EVENINGS;
     el.scheduleToggle.hidden = !more;
@@ -359,6 +378,7 @@ el.list.addEventListener("click", (event) => {
 
 el.scheduleToggle.addEventListener("click", () => {
   state.showAllEvenings = !state.showAllEvenings;
+  state.skipScheduleAnimation = true; // expanding the list is not a change to the plan
   render();
 });
 

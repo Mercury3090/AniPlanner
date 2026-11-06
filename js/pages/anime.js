@@ -4,6 +4,7 @@
 import { api, describeError } from "../api.js";
 import { getDraft, isInDraft, onChange } from "../storage.js";
 import { debounce, escapeHtml } from "../utils.js";
+import { crossfade } from "../animations.js";
 import { icon } from "../icons.js";
 import { togglePlan } from "../plan-actions.js";
 import { describeRuntime, isSafeTrailerUrl, parseAnimeId, truncate } from "../detail.js";
@@ -149,7 +150,10 @@ function renderItem(item) {
       <div id="related-body"></div>
     </section>`;
 
-  el.detail.innerHTML = markup;
+  // The skeleton fades out while the real page fades in.
+  crossfade(el.detail, () => {
+    el.detail.innerHTML = markup;
+  });
   el.detail.removeAttribute("aria-busy");
   document.title = `${item.title} | AniPlanner`;
   const description = document.querySelector('meta[name="description"]');

@@ -23,9 +23,9 @@ function headerMarkup(current) {
 
   return `
     <div class="container site-header__inner">
-      <a class="brand" href="index.html" aria-label="Watch Night Planner, home">
+      <a class="brand" href="index.html" aria-label="AniPlanner, home">
         <span class="brand__mark">${icon("moon")}</span>
-        <span>Watch Night</span>
+        <span>AniPlanner</span>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
         ${icon("menu")}
@@ -40,12 +40,12 @@ function footerMarkup() {
   const items = LINKS.map((l) => `<li><a href="${l.href}">${l.label}</a></li>`).join("");
   return `
     <div class="container site-footer__inner">
-      <a class="brand" href="index.html" aria-label="Watch Night Planner, home">
+      <a class="brand" href="index.html" aria-label="AniPlanner, home">
         <span class="brand__mark">${icon("moon")}</span>
-        <span>Watch Night</span>
+        <span>AniPlanner</span>
       </a>
       <nav aria-label="Footer"><ul>${items}</ul></nav>
-      <p style="margin:0">Anime data from the <a href="https://jikan.moe" rel="noopener">Jikan API</a>, sourced from MyAnimeList.</p>
+      <p style="margin:0">Anime data from <a href="https://tenrai.org" rel="noopener">Tenrai</a>, a mirror of MyAnimeList data.</p>
     </div>`;
 }
 
@@ -84,10 +84,11 @@ function updateCount() {
 /**
  * Shows a short message at the bottom of the screen.
  * @param {string} message
- * @param {{action?: {label: string, onClick: () => void}, duration?: number}} [options]
+ * @param {{action?: {label: string, onClick: () => void}, duration?: number, tone?: "success" | "removed"}} [options]
+ *   tone "success" shows a green tick, "removed" shows a red minus circle.
  * @returns {HTMLElement}
  */
-export function showToast(message, { action, duration = 4000 } = {}) {
+export function showToast(message, { action, duration = 4000, tone = "success" } = {}) {
   let region = document.querySelector(".toast-region");
   if (!region) {
     region = document.createElement("div");
@@ -98,8 +99,8 @@ export function showToast(message, { action, duration = 4000 } = {}) {
   }
 
   const toast = document.createElement("div");
-  toast.className = "toast";
-  toast.innerHTML = `${icon("circle-check")}<span></span>`;
+  toast.className = `toast toast--${tone}`;
+  toast.innerHTML = `${icon(tone === "removed" ? "circle-minus" : "circle-check")}<span></span>`;
   toast.querySelector("span").textContent = message;
 
   if (action) {

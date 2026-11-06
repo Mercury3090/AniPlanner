@@ -18,7 +18,7 @@ Built for Interactive Media 3B (Advanced Web Development with GSAP). It implemen
 
 - HTML, CSS and JavaScript (ES modules), no build step
 - [GSAP](https://gsap.com) with ScrollTrigger for motion
-- [Jikan API v4](https://docs.api.jikan.moe) for all anime data (no key needed)
+- [Tenrai](https://tenrai.org), a free keyless mirror of MyAnimeList data that serves the Jikan v4 format, for all anime data (the original public Jikan API closed on 1 October 2026)
 - `localStorage` for the current plan and saved plans, `sessionStorage` for API caching
 
 ## Run locally
@@ -26,9 +26,12 @@ Built for Interactive Media 3B (Advanced Web Development with GSAP). It implemen
 The site uses ES modules, so it must be served over HTTP. Opening the files directly with `file://` will not work.
 
 ```bash
-# VS Code
+# Option 1: VS Code
 # Install the "Live Server" extension, then right-click index.html > Open with Live Server
 
+# Option 2: Python
+python3 -m http.server 8000
+# then open http://localhost:8000
 ```
 
 Run the unit tests (Node 18 or later):
@@ -45,20 +48,26 @@ css/
   tokens.css        Design tokens (colour, spacing, radius, type, layout)
   base.css          Reset, typography, layout primitives, accessibility helpers
   components.css    Buttons, inputs, chips, badges, cards, banners, skeletons, toasts, nav
+  pages.css         Page-specific layout (Discover filters, card extras)
 js/
-  api.js            Jikan client: request queue, cache, retry, data normalising
+  api.js            API client: request queue, cache, retry, data normalising
   planner-core.js   Runtime, totals and schedule maths (pure functions)
   storage.js        localStorage layer for the draft plan and saved plans
   utils.js          Duration parsing, formatting and helpers
   icons.js          Inline SVG icon set
   layout.js         Shared header and footer, mobile menu, toast helper
+  moods.js          Mood, watch-time range and sort definitions for Discover
+  ui.js             Markup builders: cards, badges, banners, empty states, skeletons
+  detail.js         Pure helpers for the detail page (id parsing, runtime strip, trailer safety)
+  plan-actions.js   Add or remove a title from the plan, with the Undo toast
+  pages/            One controller per page (discover.js, anime.js, ...)
 assets/             Favicon and images
 tests/              Unit tests for the maths and the API client
 ```
 
 ## How the API is used
 
-Jikan allows 3 requests per second and 60 per minute, so `js/api.js` handles this in one place:
+The API's public limit is about 3 requests per second and 60 per minute, so `js/api.js` handles this in one place. The address is a single constant (`BASE_URL`) at the top of that file:
 
 - One queue starts requests at least 400 ms apart.
 - Responses are cached for 10 minutes in `sessionStorage`.
@@ -66,6 +75,25 @@ Jikan allows 3 requests per second and 60 per minute, so `js/api.js` handles thi
 - A 429 or server error is retried once after 2 seconds, then reported.
 - If a live request fails, recent cached results can still be shown.
 - Every response is converted into one consistent shape before the interface uses it.
+
+## How Discover works
+
+- Search is debounced by 400 ms, needs at least 2 letters, and cancels any search it replaces.
+- The API has no mood field, so each mood is mapped to genre names, and the genre IDs are looked up from the API at runtime.
+- Watch-time ranges (under 5 hours, 5 to 15, 15 to 30, over 30) are based on total runtime, using the same maths as the planner. "Movie" is filtered by the API.
+- Titles that are still airing have no total runtime, so they are left out of watch-time ranges, and the page says so.
+- Filters are stored in the URL, so going back from a detail page returns to the same results.
+- All four states are handled: loading skeletons, results, an error banner with Retry, and an empty state with Clear filters.
+
+## How the detail page works
+
+- The anime id comes from `anime.html?id=`. Anything that is not a plain positive whole number shows the not-found state without calling the API.
+- The runtime strip shows episodes, minutes per episode, total runtime and evenings needed at the user's hours per evening. It explains itself for movies, titles that are still airing, and titles with no listed episode length (24 minutes is assumed and flagged).
+- The synopsis is cut off after six lines, and Read more only appears when the text really is cut off.
+- The trailer player is only built when the user presses play, and only https YouTube embeds are allowed.
+- Related titles load after the main content, so a failure there never breaks the page. They use a simpler card, because the API gives only a title and image for each.
+- Genres are shown as plain tags.
+- The Back link returns to Discover with the filters the user had.
 
 ## How the planner works
 
@@ -87,7 +115,7 @@ Jikan allows 3 requests per second and 60 per minute, so `js/api.js` handles thi
 
 ## Credits
 
-- Anime data and poster images: [Jikan API](https://jikan.moe), sourced from [MyAnimeList](https://myanimelist.net)
+- Anime data and poster images: [Tenrai](https://tenrai.org), serving [MyAnimeList](https://myanimelist.net) data in the Jikan v4 format
 - Fonts: [Sora](https://fonts.google.com/specimen/Sora) and [Inter](https://fonts.google.com/specimen/Inter) (Google Fonts)
 - Icons: outline icon set based on the style of [Tabler Icons](https://tabler.io/icons)
 - Animation: [GSAP](https://gsap.com)

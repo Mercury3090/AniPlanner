@@ -1,7 +1,9 @@
-// Jikan v4 client.
+// Anime API client.
 //
-// Jikan allows 3 requests per second and 60 per minute, so every call goes
-// through one queue that starts requests at least 400 ms apart. Responses are
+// The public Jikan API (api.jikan.moe) closed on 1 October 2026. Tenrai is a free,
+// keyless mirror that serves the same Jikan v4 JSON, so only the address below
+// changes. The public limit is about 3 requests per second and 60 per minute, so
+// every call goes through one queue that starts requests at least 400 ms apart. Responses are
 // cached in sessionStorage for 10 minutes, identical in-flight requests are
 // shared, and a 429 or server error is retried once before it is reported.
 // Every response is converted into one consistent internal shape (see
@@ -9,7 +11,7 @@
 
 import { parseDuration } from "./utils.js";
 
-export const BASE_URL = "https://api.jikan.moe/v4";
+export const BASE_URL = "https://api.tenrai.org/v1";
 
 /** kind is one of: "rate-limit" | "not-found" | "network" | "server" | "aborted" */
 export class ApiError extends Error {

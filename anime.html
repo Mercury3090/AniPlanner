@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Anime details | Watch Night Planner</title>
+    <title>Anime details | AniPlanner</title>
     <meta name="description" content="Episode count, length per episode and total runtime for an anime, with an Add to plan button." />
     <meta name="theme-color" content="#0f1115" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -16,19 +16,26 @@
     <link rel="stylesheet" href="css/tokens.css" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/pages.css" />
   </head>
   <body data-page="discover">
     <a class="skip-link" href="#main">Skip to content</a>
     <header id="site-header"></header>
 
     <main id="main" class="page container" tabindex="-1">
-      <h1>Anime details</h1>
-      <p class="muted">Episodes, length per episode and total runtime.</p>
+      <a id="back-link" class="back-link" href="discover.html">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12l14 0"/><path d="M5 12l6 6"/><path d="M5 12l6 -6"/></svg>
+        Back to results
+      </a>
 
+      <div id="banner-region"></div>
+      <article id="detail" class="detail" aria-busy="true"></article>
+      <div id="empty-region"></div>
     </main>
 
     <footer id="site-footer"></footer>
     <noscript><p class="container">This site needs JavaScript to load anime data.</p></noscript>
     <script type="module" src="js/layout.js"></script>
+    <script type="module" src="js/pages/anime.js"></script>
   </body>
 </html>

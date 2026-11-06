@@ -189,7 +189,7 @@
 .field { display: grid; gap: var(--space-xs); }
 .field__label { font-size: var(--text-caption); color: var(--color-text-muted); }
 .input-wrap { position: relative; display: flex; align-items: center; }
-.input-wrap .icon { position: absolute; left: var(--space-md); color: var(--color-text-muted); pointer-events: none; }
+.input-wrap > .icon { position: absolute; left: var(--space-md); color: var(--color-text-muted); pointer-events: none; }
 .input {
   width: 100%;
   min-height: 48px;
@@ -203,7 +203,10 @@
 .input::placeholder { color: var(--color-text-muted); }
 .input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; border-color: var(--color-accent); }
 .input[aria-invalid="true"] { border-color: var(--color-error); }
-.input-wrap .input-clear { position: absolute; right: 2px; }
+.input-wrap .input-clear { position: absolute; top: 50%; right: 2px; transform: translateY(-50%); }
+/* Our own clear button replaces the one browsers add to search fields. */
+.input[type="search"]::-webkit-search-cancel-button,
+.input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .field__error { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-caption); color: var(--color-error); }
 
 .stepper { display: inline-flex; align-items: center; gap: var(--space-sm); }
@@ -324,7 +327,7 @@
   border-radius: var(--radius-lg);
   background: var(--color-surface);
 }
-.banner__text { flex: 1; }
+.banner__text { flex: 1; margin: 0; }
 .banner--success { border-color: var(--color-success); background: rgba(61, 214, 140, 0.1); }
 .banner--success .icon { color: var(--color-success); }
 .banner--error { border-color: var(--color-error); background: rgba(255, 107, 107, 0.1); }
@@ -332,6 +335,17 @@
 .banner--warning { border-color: var(--color-primary); background: rgba(245, 158, 11, 0.1); }
 .banner--warning .icon { color: var(--color-primary); }
 @media (max-width: 599px) { .banner { flex-wrap: wrap; } .banner .btn { width: 100%; } }
+
+/* The action button inside a banner takes the banner's colour, so an error is red
+   all the way through and a success is green. Warnings stay amber (the default). */
+.banner--error .btn--secondary { border-color: var(--color-error); color: var(--color-error); }
+.banner--error .btn--secondary:hover { background: rgba(255, 107, 107, 0.14); }
+.banner--error .btn--secondary:active { background: rgba(255, 107, 107, 0.26); border-color: var(--color-error); }
+
+.banner--success .btn--secondary { border-color: var(--color-success); color: var(--color-success); }
+.banner--success .btn--secondary:hover { background: rgba(61, 214, 140, 0.14); }
+.banner--success .btn--secondary:active { background: rgba(61, 214, 140, 0.26); border-color: var(--color-success); }
+
 
 .empty-state {
   display: grid;
@@ -369,4 +383,5 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   pointer-events: auto;
 }
-.toast .icon { color: var(--color-success); }
+.toast--success .icon { color: var(--color-success); }
+.toast--removed .icon { color: var(--color-error); }

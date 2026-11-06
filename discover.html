@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Discover anime | Watch Night Planner</title>
+    <title>Discover anime | AniPlanner</title>
     <meta name="description" content="Search anime by title and filter by mood, genre and length. Every card shows how long it takes to watch." />
     <meta name="theme-color" content="#0f1115" />
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="css/tokens.css" />
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/pages.css" />
   </head>
   <body data-page="discover">
     <a class="skip-link" href="#main">Skip to content</a>
@@ -23,12 +24,55 @@
 
     <main id="main" class="page container" tabindex="-1">
       <h1>Discover</h1>
-      <p class="muted">Search by title, or filter by mood, genre and length.</p>
+      <p class="muted">Search by title, or filter by mood and total watch time.</p>
 
+      <form id="search-form" role="search" class="search" novalidate>
+        <div class="field">
+          <label class="field__label" for="q">Search anime by title</label>
+          <div class="input-wrap">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/></svg>
+            <input id="q" class="input" type="search" name="q" placeholder="Search anime" autocomplete="off" aria-describedby="q-error" />
+            <button type="button" id="q-clear" class="icon-btn input-clear" aria-label="Clear search" hidden>
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p id="q-error" class="field__error" hidden></p>
+        </div>
+      </form>
+
+      <button type="button" id="filters-toggle" class="btn btn--secondary btn--small filters-toggle" aria-expanded="false" aria-controls="filters-panel">
+        Filters <span id="filters-count" class="nav-count" hidden></span>
+      </button>
+
+      <div id="filters-panel" class="filters" data-open="false">
+        <fieldset class="filter-group">
+          <legend>Mood</legend>
+          <div id="mood-chips" class="cluster"></div>
+        </fieldset>
+        <fieldset class="filter-group">
+          <legend>Total watch time</legend>
+          <div id="runtime-chips" class="cluster"></div>
+        </fieldset>
+        <div class="field filter-sort">
+          <label class="field__label" for="sort">Sort by</label>
+          <select id="sort" class="input"></select>
+        </div>
+      </div>
+
+      <div id="banner-region"></div>
+      <p id="results-status" class="caption results-status" role="status" aria-live="polite"></p>
+      <p id="runtime-note" class="caption" hidden>Titles that are still airing have no total runtime yet, so they are not included in watch-time ranges.</p>
+
+      <ul id="results" class="card-grid" aria-label="Search results"></ul>
+      <div id="empty-region"></div>
+      <div class="load-more">
+        <button type="button" id="load-more" class="btn btn--secondary" hidden>Load more</button>
+      </div>
     </main>
 
     <footer id="site-footer"></footer>
     <noscript><p class="container">This site needs JavaScript to load anime data.</p></noscript>
     <script type="module" src="js/layout.js"></script>
+    <script type="module" src="js/pages/discover.js"></script>
   </body>
 </html>

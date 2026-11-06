@@ -228,7 +228,7 @@ test("search sends only the parameters that have values", async () => {
   const { api, calls } = makeClient(() => mockResponse(200, { data: [], pagination: {} }));
   await api.searchAnime({ q: "naruto", genres: "1,4", type: "", page: 2 });
   const url = new URL(calls[0].url);
-  assert.equal(url.pathname, "/v4/anime");
+  assert.equal(url.pathname, "/v1/anime");
   assert.equal(url.searchParams.get("q"), "naruto");
   assert.equal(url.searchParams.get("genres"), "1,4");
   assert.equal(url.searchParams.get("page"), "2");
@@ -297,4 +297,92 @@ test("describeError gives a friendly message for every kind", () => {
   assert.match(describeError(new ApiError("not-found", "")), /couldn't find/);
   assert.match(describeError(new ApiError("network", "")), /connection/);
   assert.match(describeError(new ApiError("server", "")), /try again/);
+});
+
+/* ---------- Discover filters ---------- */
+
+import { MOODS, RUNTIME_RANGES, genreIdsForMood, matchesRuntime, findSort, findMood, findRange } from "../js/moods.js";
+import { runtimeLines, animeCardHTML, bannerHTML, emptyStateHTML, statusBadgeHTML } from "../js/ui.js";
+
+const GENRES = [
+  { id: 1, name: "Action" }, { id: 2, name: "Adventure" }, { id: 4, name: "Comedy" },
+  { id: 8, name: "Drama" }, { id: 22, name: "Romance" }, { id: 24, name: "Sci-Fi" },
+  { id: 7, name: "Mystery" }, { id: 36, name: "Slice of Life" },
+];
+
+test("moods map to genre ids by name", () => {
+  assert.deepEqual(genreIdsForMood("hype", GENRES), [1, 2]);
+  assert.deepEqual(genreIdsForMood("cosy", GENRES).sort((a, b) => a - b), [4, 36]);
+  assert.deepEqual(genreIdsForMood("nope", GENRES), []);
+  assert.deepEqual(genreIdsForMood("hype", []), []);
+  for (const mood of MOODS) assert.ok(genreIdsForMood(mood.key, GENRES).length > 0, mood.key);
+  assert.equal(findMood("hype").label, "Hype");
+  assert.equal(findMood("x"), null);
+});
+
+test("runtime ranges use total watch time and exclude unknown totals", () => {
+  const tv = (episodes, minutesPerEpisode) => ({ id: 1, title: "t", type: "TV", episodes, minutesPerEpisode });
+  assert.equal(matchesRuntime(tv(12, 24), "under5"), true); // 288
+  assert.equal(matchesRuntime(tv(13, 24), "under5"), false); // 312, over the 300 limit
+  assert.equal(matchesRuntime(tv(13, 24), "5to15"), true);
+  assert.equal(matchesRuntime(tv(25, 24), "15to30"), false); // 600 min = 10h
+  assert.equal(matchesRuntime(tv(50, 24), "15to30"), true); // 1200 min = 20h
+  assert.equal(matchesRuntime(tv(100, 24), "over30"), true); // 2400 min = 40h
+  assert.equal(matchesRuntime(tv(300, 24), "15to30"), false);
+  // boundaries: exactly 5h belongs to the next range, not the previous one
+  assert.equal(matchesRuntime(tv(10, 30), "under5"), false);
+  assert.equal(matchesRuntime(tv(10, 30), "5to15"), true);
+  // ongoing titles never match a range
+  for (const r of RUNTIME_RANGES.filter((x) => !x.server)) assert.equal(matchesRuntime(tv(null, 24), r.key), false);
+  // no filter, or the server-side movie filter, never hides anything here
+  assert.equal(matchesRuntime(tv(null, 24), ""), true);
+  assert.equal(matchesRuntime(tv(12, 24), "movie"), true);
+  assert.equal(findRange("movie").server, true);
+  assert.equal(findSort("unknown").key, "popular");
+});
+
+test("runtimeLines describes TV, movie, ongoing and estimated titles", () => {
+  assert.deepEqual(runtimeLines(bebop), { meta: "26 episodes · 24 min", total: "10h 24m", counted: true });
+  assert.deepEqual(runtimeLines(movie), { meta: "Movie", total: "2h 05m", counted: true });
+  assert.equal(runtimeLines(airing).total, "Ongoing, no total yet");
+  assert.equal(runtimeLines({ ...airing, status: "Not yet aired" }).total, "Not aired yet");
+  const est = runtimeLines(noDuration);
+  assert.match(est.meta, /estimated/);
+  assert.match(est.total, /^About /);
+  assert.equal(runtimeLines({ ...bebop, episodes: 1 }).meta, "1 episode · 24 min");
+});
+
+test("animeCardHTML escapes API text and exposes the right labels", () => {
+  const evil = { ...bebop, title: `<img src=x onerror=alert(1)> "Bebop"`, image: `https://x/y.jpg" onload="alert(1)` };
+  const html = animeCardHTML(evil, { inPlan: false });
+  assert.ok(!html.includes("<img src=x"), "title must be escaped");
+  assert.ok(!html.includes('onload="alert'), "image url must be escaped");
+  assert.ok(html.includes("&lt;img src=x"));
+  assert.ok(html.includes('href="anime.html?id=1"'));
+  assert.ok(html.includes("Total runtime: "));
+  assert.match(html, /aria-label="Add [^"]* to plan"/);
+
+  const added = animeCardHTML(bebop, { inPlan: true });
+  assert.match(added, /aria-label="Remove Cowboy Bebop from plan"/);
+  assert.ok(added.includes("Added"));
+
+  const noImage = animeCardHTML({ ...bebop, image: null });
+  assert.ok(noImage.includes("No poster available"));
+});
+
+test("status badges always include text", () => {
+  assert.match(statusBadgeHTML({ status: "Currently Airing" }), /Airing/);
+  assert.match(statusBadgeHTML({ status: "Finished Airing" }), /Finished/);
+  assert.match(statusBadgeHTML({ status: "Not yet aired" }), /Upcoming/);
+  assert.equal(statusBadgeHTML({ status: null }), "");
+});
+
+test("banners and empty states use the right roles and escape text", () => {
+  assert.match(bannerHTML({ tone: "error", message: "Oops" }), /role="alert"/);
+  assert.match(bannerHTML({ tone: "warning", message: "Heads up" }), /role="status"/);
+  assert.ok(bannerHTML({ tone: "error", message: "<b>x</b>", actionLabel: "Retry" }).includes("&lt;b&gt;"));
+  assert.ok(bannerHTML({ tone: "error", message: "x", actionLabel: "Retry" }).includes('data-action="retry"'));
+  const empty = emptyStateHTML({ title: "No results", text: "Try again", actionLabel: "Clear filters" });
+  assert.ok(empty.includes("<h2>No results</h2>") && empty.includes('data-action="clear"'));
+  assert.ok(emptyStateHTML({ title: "t", text: "x", actionLabel: "Go", href: "discover.html" }).includes('href="discover.html"'));
 });

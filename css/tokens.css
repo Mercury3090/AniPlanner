@@ -47,6 +47,9 @@
   --text-caption: 0.875rem;
   --lh-caption: 1.25rem;
 
+  /* Poster shape: tall and narrow on phones and tablets, a little shorter on computers */
+  --poster-ratio: 2 / 3;
+
   /* Layout */
   --layout-max: 1280px;
   --page-margin: 1rem;
@@ -67,6 +70,12 @@
     --lh-h3: 1.75rem;
     --page-margin: 2rem;
     --gutter: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --poster-ratio: 3 / 4;
   }
 }
 

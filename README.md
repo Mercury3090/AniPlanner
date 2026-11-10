@@ -94,6 +94,7 @@ On Home, Discover and the detail pages, a "View plan" pill appears in the bottom
 
 - Search is debounced by 400 ms, needs at least 2 letters, and cancels any search it replaces.
 - The API has no mood field, so each mood is mapped to genre names, and the genre IDs are looked up from the API at runtime.
+- A title must have every genre of a mood, so a mood can match nothing. When that happens the page tries the mood's genres one at a time, main genre first, and tells the user which one it is showing and why. If the catalogue has none of a mood's genres, it says so and shows unfiltered results. If nothing matches at all, it says that plainly, with a button to clear the filters.
 - Watch-time ranges (under 5 hours, 5 to 15, 15 to 30, over 30) are based on total runtime, using the same maths as the planner. "Movie" is filtered by the API.
 - Titles that are still airing have no total runtime, so they are left out of watch-time ranges, and the page says so.
 - Filters are stored in the URL, so going back from a detail page returns to the same results.
@@ -138,6 +139,17 @@ On Home, Discover and the detail pages, a "View plan" pill appears in the bottom
 - If the minutes per episode are missing, 24 is used and the figure is marked as an estimate.
 - The schedule uses the weekdays the user chooses. Titles are watched in order and can carry over into the next evening, so every evening has a real date and the last one is the finish date.
 
+## Branding
+
+The look is dark with an amber accent, set in Sora and Inter. The identity is built from one idea, an evening, and a few small details that repeat across the site:
+
+- **Logo.** A crescent moon with a small sparkle, on an amber rounded square. The same mark is the favicon. The name is a two-tone wordmark: "Ani" in white and "Planner" in amber.
+- **Hero.** "watch night" is picked out in amber with a hand-drawn underline, there is a faint, large moon and a soft evening glow behind the posters.
+- **Empty states.** Instead of a lone icon, the empty plan, no saved plans and no results screens have small line illustrations in the same style: soft grey outlines, one amber accent, and the moon and sparkle from the logo. They are decorative and hidden from screen readers, and the words beside them carry the meaning.
+- **One colour, used with purpose.** Amber is for things that matter: actions, the current page, runtimes and the moon. Everything else stays quiet.
+
+Every decorative drawing is hidden from assistive technology, none can be tabbed to, and none changes what a page says.
+
 ## Motion
 
 All animation lives in `js/animations.js`. The page scripts say when something should animate, and that file decides how. Layout is never animated: motion is `transform` and `opacity`, plus the stroke of the logo's SVG moon.
@@ -146,7 +158,7 @@ Every animation has one of four jobs: orient (where am I), give feedback (it wor
 
 | Animation | Where | How |
 | --- | --- | --- |
-| Hero reveal | Home | A GSAP timeline: headline, lead, buttons, then the posters, staggered, about one second in total (`power3.out`) |
+| Hero reveal | Home | A GSAP timeline: the moon fades in, then headline, lead, buttons and posters, staggered. The underline under "watch night" is drawn in as a stroke. About a second and a half in total (`power3.out`) |
 | Page headings | Discover, Planner, Saved plans | The heading and intro rise in together, so every page opens the same way |
 | Detail page arrives | Anime detail | A timeline brings in the poster, title and badges, runtime strip and button in sequence. The total runtime counts up as the strip appears, and the sections below reveal on scroll |
 | Cards and steps rise in | Home, Discover, related titles | ScrollTrigger batches fade and lift items in as they reach the lower part of the screen. Only new cards animate, so Load more and filter changes never replay the cards already shown |
@@ -155,7 +167,7 @@ Every animation has one of four jobs: orient (where am I), give feedback (it wor
 | Planner rows | Planner | Titles slide in when they are added or finish loading, and ease out before they are removed. Undo brings a row back where it was |
 | Evenings fill | Planner | Each evening's bar grows from the left with a stagger (`back.out(1.4)`), and the total runtime and evenings count up from their previous values |
 | Drag to reorder (Draggable) | Planner | Titles are watched in list order, so the order matters. Drag a handle and the other rows slide aside to make room. On release the new order is saved and the dropped row settles into place. The schedule redraws in the new order |
-| Logo (SVG) | Every page | The moon in the logo draws itself once per visit, and tilts when the logo is hovered or focused |
+| Logo (SVG) | Every page | The moon in the logo draws itself, then its sparkle, once per visit. It tilts when the logo is hovered or focused |
 | Confirmations | Everywhere | The Add button icon pops, toasts slide in and fade out, and the View plan pill pops when a title is added |
 
 Reordering is also fully available from the keyboard: focus a title's handle and press the up or down arrow keys, or Home and End. Each move is announced to screen readers, and focus stays on the handle after the list redraws. The handles appear once every title has loaded and there is more than one, so a plan is never reordered while part of it is still missing.

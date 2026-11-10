@@ -5,7 +5,7 @@
 import { icon } from "./icons.js";
 import { getDraft, onChange } from "./storage.js";
 import { plural } from "./utils.js";
-import { animateLogo, pillPop, revealPageHeader, toastIn, toastOut } from "./animations.js";
+import { ambientGlow, animateLogo, pillPop, revealPageHeader, toastIn, toastOut } from "./animations.js";
 
 const LINKS = [
   { key: "home", href: "index.html", label: "Home" },
@@ -27,7 +27,7 @@ function headerMarkup(current) {
     <div class="container site-header__inner">
       <a class="brand" href="index.html" aria-label="AniPlanner, home">
         <span class="brand__mark">${icon("moon")}</span>
-        <span>AniPlanner</span>
+        <span class="brand__name">Ani<b>Planner</b></span>
       </a>
       <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
         ${icon("menu")}
@@ -44,7 +44,7 @@ function footerMarkup() {
     <div class="container site-footer__inner">
       <a class="brand" href="index.html" aria-label="AniPlanner, home">
         <span class="brand__mark">${icon("moon")}</span>
-        <span>AniPlanner</span>
+        <span class="brand__name">Ani<b>Planner</b></span>
       </a>
       <nav aria-label="Footer"><ul>${items}</ul></nav>
       <p style="margin:0">Anime data from <a href="https://tenrai.org" rel="noopener">Tenrai</a>, a mirror of MyAnimeList data.</p>
@@ -72,6 +72,19 @@ function setupMenu(header) {
   });
   MOBILE_QUERY.addEventListener("change", () => setOpen(false));
   setOpen(false);
+}
+
+/* ---------- Ambient glow ---------- */
+
+/** A warm amber tint behind every page. Decorative, so hidden from assistive technology. */
+function setupAmbient() {
+  if (document.querySelector(".ambient")) return;
+  const root = document.createElement("div");
+  root.className = "ambient";
+  root.setAttribute("aria-hidden", "true");
+  root.innerHTML = '<span class="ambient__glow ambient__glow--a"></span><span class="ambient__glow ambient__glow--b"></span>';
+  document.body.append(root);
+  ambientGlow(root);
 }
 
 /* ---------- "View plan" pill ---------- */
@@ -177,6 +190,7 @@ function init() {
     footer.innerHTML = footerMarkup();
   }
 
+  setupAmbient();
   revealPageHeader();
   updateCount();
   onChange(updateCount);

@@ -37,11 +37,13 @@ test("count text formats minutes and plain numbers", () => {
 
 /* ---------- With a stand-in for GSAP: check what would be animated ---------- */
 
-let calls, reduced, heldClass, headerEls, session, timers, created;
+let calls, reduced, heldClass, headerEls, session, timers, created, underline, bodyPage, observed, resizeCallback, refreshes;
 function install() {
   calls = [];
   heldClass = [];
   headerEls = [];
+  underline = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
+  bodyPage = "discover"; observed = null; resizeCallback = null; refreshes = 0;
   session = new Map();
   timers = [];
   created = [];
@@ -59,13 +61,17 @@ function install() {
       fromTo: (...a) => calls.push(["fromTo", ...a]),
       timeline: (...a) => (calls.push(["timeline", ...a]), chain),
     },
-    ScrollTrigger: { batch: (...a) => calls.push(["batch", ...a]) },
+    ScrollTrigger: { batch: (...a) => calls.push(["batch", ...a]), maxScroll: () => 4000, refresh: () => (refreshes += 1) },
+    innerWidth: 1000,
+    innerHeight: 800,
+    clearTimeout: () => {},
+    ResizeObserver: class { constructor(cb) { resizeCallback = cb; } observe(target) { observed = target; } },
     Draggable: { create: (el, cfg) => { const d = { el, cfg, killed: false, kill() { d.killed = true; } }; created.push(d); return [d]; } },
     matchMedia: () => ({ matches: reduced }),
     sessionStorage: { getItem: (k) => session.get(k) ?? null, setItem: (k, v) => session.set(k, v) },
     setTimeout: (fn) => (timers.push(fn), timers.length),
     getComputedStyle: () => ({ rowGap: "16px", position: "static" }),
-    document: { querySelectorAll: () => headerEls, documentElement: { classList: { remove: (c) => heldClass.push(c) } } },
+    document: { body: { get dataset() { return { page: bodyPage }; } }, querySelectorAll: () => headerEls, querySelector: () => underline, documentElement: { classList: { remove: (c) => heldClass.push(c) } } },
   };
 }
 beforeEach(() => { reduced = false; install(); });
@@ -122,18 +128,33 @@ test("reduced motion: no scroll movement, no counting, no pop, no slide", async 
   assert.equal(removed, 1);
 });
 
-test("hero: a timeline of headline, lead, buttons, then posters; releases the hold when done", async () => {
+test("hero: a timeline of moon, headline, lead, buttons, then posters; releases the hold when done", async () => {
   const a = await load();
   assert.ok(a.revealHero());
   const steps = calls.filter((c) => c[0] === "tl.fromTo");
-  assert.deepEqual(steps.map((s) => s[1]), [".hero__title", ".hero__lead", ".hero__actions", ".hero-poster"]);
-  assert.deepEqual(steps.map((s) => s[4]), [0, 0.1, 0.2, 0.3]); // start times in seconds
-  assert.equal(steps[0][3].duration, 0.8);
-  assert.equal(steps[3][3].stagger, 0.08);
-  assert.deepEqual(steps[0][2], { y: 30, opacity: 0 });
+  assert.deepEqual(steps.map((s) => s[1]), [".hero__moon", ".hero__title", ".hero__lead", ".hero__actions", ".hero-poster"]);
+  assert.deepEqual(steps.map((s) => s[4]), [0, 0, 0.1, 0.2, 0.3]); // start times in seconds
+  assert.equal(steps[1][3].duration, 0.8);
+  assert.equal(steps[4][3].stagger, 0.08);
+  assert.deepEqual(steps[1][2], { y: 30, opacity: 0 });
   assert.equal(calls.find((c) => c[0] === "timeline")[1].defaults.ease, "power3.out");
   calls.find((c) => c[0] === "tl.eventCallback")[2](); // onComplete
   assert.deepEqual(heldClass, ["has-motion"]);
+});
+
+test("hero: the underline is drawn in with its stroke, and is left alone if there is none", async () => {
+  let a = await load();
+  a.revealHero();
+  assert.equal(underline.attrs.pathLength, "100");
+  assert.deepEqual(calls.find((c) => c[0] === "set")[2], { strokeDasharray: "100 1000", strokeDashoffset: 100 });
+  const draw = calls.find((c) => c[0] === "tl.to");
+  assert.equal(draw[1], underline);
+  assert.deepEqual([draw[2].strokeDashoffset, draw[2].duration, draw[3]], [0, 0.7, 0.6]);
+  // No underline on the page: nothing is set and no draw is added.
+  underline = null; calls.length = 0;
+  a = await load();
+  a.revealHero();
+  assert.equal(calls.some((c) => c[0] === "set" || c[0] === "tl.to"), false);
 });
 
 test("hero with reduced motion is a quick fade and releases the hold at once", async () => {
@@ -143,7 +164,8 @@ test("hero with reduced motion is a quick fade and releases the hold at once", a
   assert.deepEqual(heldClass, ["has-motion"]);
   const t = calls.find((c) => c[0] === "fromTo");
   assert.deepEqual([t[2], t[3].duration], [{ opacity: 0 }, 0.2]);
-  assert.equal(calls.some((c) => c[0] === "timeline"), false);
+  assert.ok(t[1].includes(".hero__moon") && !t[1].includes(".hero__week"), "the moon fades in too");
+  assert.equal(calls.some((c) => c[0] === "timeline" || c[0] === "set"), false, "no movement and no underline drawing");
 });
 
 test("evenings fill from the left, with the stagger capped for long plans", async () => {
@@ -321,21 +343,28 @@ test("a delayed count-up shows the starting value first, so the final number nev
 /* ---------- The logo ---------- */
 
 function fakeMark() {
-  const path = { attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } };
-  const svg = { querySelector: () => path };
+  const mk = () => ({ attrs: {}, setAttribute(k, v) { this.attrs[k] = v; } });
+  const path = mk(), star = mk();
+  const svg = { querySelectorAll: () => [path, star] };
   const handlers = {};
   const brand = { addEventListener: (type, fn) => (handlers[type] = fn) };
-  return { path, handlers, mark: { querySelector: () => svg, closest: () => brand }, svg };
+  return { path, star, handlers, mark: { querySelector: () => svg, closest: () => brand }, svg };
 }
 
-test("the logo draws itself once per visit and tilts on hover", async () => {
+test("the logo draws the moon then the sparkle once per visit, and tilts on hover", async () => {
   const a = await load();
   const first = fakeMark();
   a.animateLogo(first.mark);
-  assert.equal(first.path.attrs.pathLength, "1");
+  assert.equal(first.path.attrs.pathLength, "100");
+  assert.equal(first.star.attrs.pathLength, "100", "the sparkle is drawn too");
   const set = calls.find((c) => c[0] === "set");
-  assert.deepEqual(set[2], { strokeDasharray: 1, strokeDashoffset: 1 });
-  assert.ok(calls.some((c) => c[0] === "timeline"));
+  assert.deepEqual(set[1], [first.path, first.star]);
+  assert.deepEqual(set[2], { strokeDasharray: "100 1000", strokeDashoffset: 100 });
+  const draws = calls.filter((c) => c[0] === "tl.to");
+  assert.equal(draws.length, 2);
+  assert.equal(draws[0][1], first.path);
+  assert.deepEqual(draws[1][1], [first.star]);
+  assert.ok(draws[1][3] > 0.5 && draws[1][3] < draws[0][2].duration, "the sparkle starts as the moon finishes");
   assert.equal(session.get("wnp:logo-played"), "1");
 
   // Hover and focus tilt the moon, leaving straightens it.
@@ -362,7 +391,7 @@ test("the logo does nothing without motion or without a drawing", async () => {
   assert.equal(calls.length, 0);
   assert.deepEqual(f.handlers, {});
   reduced = false; a = await load();
-  a.animateLogo(null); a.animateLogo({ querySelector: () => null });
+  a.animateLogo(null); a.animateLogo({ querySelector: () => null }); a.animateLogo({ querySelector: () => ({ querySelectorAll: () => [] }) });
   assert.equal(calls.length, 0);
 });
 
@@ -480,4 +509,86 @@ test("reduced motion still allows dragging, but the rows jump instead of sliding
   const cfg = created[0].cfg;
   cfg.onPress(); rows[0].rect = { top: 150, height: 100 }; calls.length = 0; cfg.onDrag();
   assert.equal(calls.find((c) => c[0] === "to")[2].duration, 0);
+});
+
+test("draw-in animations use a 0 to 100 scale, because GSAP rounds to whole numbers and 0 to 1 would just pop", async () => {
+  const a = await load();
+  a.revealHero();
+  const start = calls.find((c) => c[0] === "set")[2];
+  const end = calls.find((c) => c[0] === "tl.to")[2];
+  assert.ok(start.strokeDashoffset >= 100, "enough whole steps to look smooth");
+  assert.match(start.strokeDasharray, /^100 \d{3,}$/, "a long gap, so the dash pattern cannot wrap round");
+  assert.equal(end.strokeDashoffset, 0);
+});
+
+/* ---------- Ambient glow ---------- */
+
+const glows = () => { const a = { id: "a" }, b = { id: "b" }; return { a, b, root: { querySelector: (s) => (s.includes("--a") ? a : s.includes("--b") ? b : null) } }; };
+
+test("the ambient glow: two glows drift with the scroll position, tied to it with scrub", async () => {
+  const a = await load();
+  const { a: glowA, b: glowB, root } = glows();
+  assert.ok(a.ambientGlow(root));
+  const st = calls.find((c) => c[0] === "timeline")[1].scrollTrigger;
+  assert.equal(st.scrub, 1, "tied to the scroll, so it stops when you stop");
+  assert.equal(st.start, 0);
+  assert.equal(st.invalidateOnRefresh, true, "positions are recalculated on resize");
+  assert.equal(st.end(), 4000, "the whole scroll length of the page");
+  const moves = calls.filter((c) => c[0] === "tl.fromTo" || c[0] === "tl.to");
+  assert.deepEqual(moves.map((m) => m[1]), [glowA, glowA, glowB, glowB]);
+  assert.deepEqual(moves.map((m) => m[0]), ["tl.fromTo", "tl.to", "tl.fromTo", "tl.to"]);
+});
+
+test("the glow's positions follow the window size (so they work at any screen size)", async () => {
+  const a = await load();
+  a.ambientGlow(glows().root);
+  const start = calls.find((c) => c[0] === "tl.fromTo")[2];
+  assert.equal(typeof start.x, "function");
+  assert.equal(start.x(), 850, "85% of a 1000px wide window");
+  assert.equal(start.y(), 96, "12% of an 800px tall window");
+  const end = calls.find((c) => c[0] === "tl.fromTo")[3];
+  assert.equal(end.x(), 100);
+});
+
+test("an ambient glow is only layout-free movement: transform and opacity", async () => {
+  const a = await load();
+  a.ambientGlow(glows().root);
+  const keys = new Set(calls.filter((c) => c[0] === "tl.fromTo" || c[0] === "tl.to").flatMap((c) => c.slice(2).flatMap((v) => (v && typeof v === "object" ? Object.keys(v) : []))));
+  for (const k of keys) assert.ok(["x", "y", "opacity", "duration"].includes(k), `unexpected property ${k}`);
+});
+
+test("on the home page the first glow starts faint, because the hero has its own", async () => {
+  bodyPage = "home";
+  const a = await load();
+  a.ambientGlow(glows().root);
+  assert.equal(calls.find((c) => c[0] === "tl.fromTo")[2].opacity, 0.25);
+  calls.length = 0; bodyPage = "discover";
+  const b = await load();
+  b.ambientGlow(glows().root);
+  assert.equal(calls.find((c) => c[0] === "tl.fromTo")[2].opacity, 1);
+});
+
+test("when the page grows (content loads), the scroll length is worked out again", async () => {
+  const a = await load();
+  const { root } = glows();
+  const before = timers.length;
+  a.ambientGlow(root);
+  assert.ok(observed, "the page body is watched");
+  resizeCallback();
+  assert.equal(timers.length, before + 1, "the refresh is delayed so a burst of changes counts once");
+  timers[timers.length - 1]();
+  assert.equal(refreshes, 1);
+});
+
+test("with reduced motion, no GSAP or missing glows, nothing happens and the glows stay where CSS puts them", async () => {
+  reduced = true;
+  let a = await load();
+  assert.equal(a.ambientGlow(glows().root), null);
+  assert.equal(calls.length, 0);
+  reduced = false;
+  a = await load();
+  assert.equal(a.ambientGlow(null), null);
+  assert.equal(a.ambientGlow({ querySelector: () => null }), null);
+  assert.equal(calls.length, 0);
+  assert.equal(bare.ambientGlow(glows().root), null);
 });

@@ -38,6 +38,7 @@
   color: var(--color-text);
   text-decoration: none;
 }
+.brand__name b { color: var(--color-primary); font-weight: inherit; }
 .brand__mark {
   display: grid;
   place-items: center;
@@ -281,7 +282,7 @@
 .card:focus-within { background: var(--color-surface-raised); border-color: var(--color-primary); }
 .card__media {
   position: relative;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--poster-ratio);
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-skeleton);
@@ -289,7 +290,7 @@
   place-items: center;
   color: var(--color-text-muted);
 }
-.card__media img { width: 100%; height: 100%; object-fit: cover; }
+.card__media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 .card__body { display: grid; gap: var(--space-xs); padding-inline: var(--space-xs); flex: 1; align-content: start; }
 .card__title {
   margin: 0;
@@ -318,7 +319,7 @@
   animation: pulse 1.4s ease-in-out infinite;
 }
 .skeleton--line { height: 0.75rem; }
-.skeleton--poster { aspect-ratio: 2 / 3; }
+.skeleton--poster { aspect-ratio: var(--poster-ratio); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
 /* ---------- Message banner, empty state, toast ---------- */
@@ -362,6 +363,7 @@
   text-align: center;
 }
 .empty-state .icon { width: 2.5rem; height: 2.5rem; color: var(--color-primary); }
+.empty-state .illustration { width: 9.5rem; height: auto; margin-bottom: var(--space-sm); color: var(--color-text-muted); }
 .empty-state h2, .empty-state h3 { margin: 0; }
 .empty-state p { max-width: 36ch; margin: 0 0 var(--space-sm); color: var(--color-text-muted); }
 
@@ -436,3 +438,11 @@
 /* Toasts sit above the pill, and the footer leaves room for it. */
 .has-plan-pill .toast-region { bottom: calc(var(--space-lg) + 4rem); }
 .has-plan-pill .site-footer { padding-bottom: 4.5rem; }
+
+/* ---------- Illustrations (empty states) ---------- */
+.il-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+.il-fill { fill: var(--color-surface-raised); }
+.il-accent { stroke: var(--color-primary); }
+.il-solid { fill: var(--color-primary); stroke: none; }
+.il-line.il-solid { stroke: var(--color-primary); }
+.il-dot { fill: var(--color-accent); stroke: none; }

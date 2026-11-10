@@ -78,7 +78,7 @@ select.input {
 .detail__summary { display: grid; gap: var(--space-md); align-content: start; min-width: 0; }
 .detail__poster {
   width: min(60%, 16rem);
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--poster-ratio);
   overflow: hidden;
   border-radius: var(--radius-lg);
   background: var(--color-skeleton);
@@ -86,7 +86,7 @@ select.input {
   place-items: center;
   color: var(--color-text-muted);
 }
-.detail__poster img { width: 100%; height: 100%; object-fit: cover; }
+.detail__poster img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 .detail__title { margin: 0; overflow-wrap: anywhere; }
 .detail__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 .detail__section { min-width: 0; }
@@ -194,7 +194,7 @@ iframe.trailer--playing { border: 0; background: #000; }
 a.related-card:hover { border-color: var(--color-primary); background: var(--color-surface-raised); }
 a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
 .related-card__media {
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--poster-ratio);
   overflow: hidden;
   border-radius: var(--radius-md);
   background: var(--color-skeleton);
@@ -202,7 +202,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   place-items: center;
   color: var(--color-text-muted);
 }
-.related-card__media img { width: 100%; height: 100%; object-fit: cover; }
+.related-card__media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 .related-card__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -515,6 +515,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .has-motion .hero__title,
 .has-motion .hero__lead,
 .has-motion .hero__actions,
+.has-motion .hero__moon,
 .has-motion [data-header-reveal] { opacity: 0; }
 
 /* ---------- Planner: drag to reorder ---------- */
@@ -544,3 +545,87 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 @media (max-width: 479px) {
   .title-row--sortable { grid-template-columns: 44px 48px minmax(0, 1fr) auto; gap: var(--space-sm); }
 }
+
+/* Small posters keep their own shape, so their loading placeholders fill them completely. */
+.hero-poster .skeleton--poster,
+.title-row__media .skeleton--poster { aspect-ratio: auto; height: 100%; }
+
+/* ---------- Brand: hero details ---------- */
+.hero { position: relative; overflow-x: clip; isolation: isolate; }
+/* A soft evening glow behind the hero. It fades to nothing before the edge of its box,
+   so there is no visible edge. */
+.hero::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: -30%;
+  right: 0;
+  width: min(56rem, 100%);
+  aspect-ratio: 1;
+  background: radial-gradient(closest-side, rgba(245, 158, 11, 0.13), transparent);
+  pointer-events: none;
+}
+/* The logo's moon and sparkle, drawn large and faint behind the posters. */
+.hero__moon {
+  position: absolute;
+  z-index: -1;
+  top: -8%;
+  right: -2%;
+  width: min(40rem, 70%);
+  height: auto;
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-opacity: 0.32;
+  stroke-width: 1.6px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+.hero__moon path { vector-effect: non-scaling-stroke; }
+.hero__moon circle { fill: var(--color-primary); fill-opacity: 0.35; stroke: none; }
+
+.hero__accent { position: relative; color: var(--color-primary); white-space: nowrap; }
+.hero__underline {
+  position: absolute;
+  left: 0;
+  bottom: -0.12em;
+  width: 100%;
+  height: 0.28em;
+  overflow: visible;
+  fill: none;
+  stroke: var(--color-primary);
+  stroke-width: 2.6; /* in drawing units, so the line stays one piece when it is drawn in */
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .hero__moon { top: -2%; right: -14%; width: 78%; }
+}
+
+/* ---------- Ambient glow ---------- */
+/* Two soft amber glows fixed behind every page. They drift as you scroll (see ambientGlow in
+   animations.js). These positions are where they sit without motion. Cards and panels have
+   solid backgrounds, so the tint shows in the gaps and never sits behind text. */
+.ambient {
+  --glow-size: min(70vmax, 60rem);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.ambient__glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--glow-size);
+  aspect-ratio: 1;
+  margin: calc(var(--glow-size) / -2) 0 0 calc(var(--glow-size) / -2);
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+.ambient__glow--a { background: radial-gradient(closest-side, rgba(245, 158, 11, 0.17), transparent); transform: translate(85vw, 12vh); }
+.ambient__glow--b { background: radial-gradient(closest-side, rgba(253, 186, 116, 0.12), transparent); transform: translate(12vw, 85vh); opacity: 0.4; }
+/* The home page hero already has its own glow. */
+[data-page="home"] .ambient__glow--a { opacity: 0.25; }

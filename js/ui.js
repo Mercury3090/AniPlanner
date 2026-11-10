@@ -2,6 +2,7 @@
 // every piece of API text is escaped before it goes into the page.
 
 import { icon } from "./icons.js";
+import { illustration, illustrationFor } from "./illustrations.js";
 import { escapeHtml, formatMinutes } from "./utils.js";
 import { runtimeOf } from "./planner-core.js";
 import { popIcon } from "./animations.js";
@@ -146,5 +147,6 @@ export function emptyStateHTML({ iconName = "search", title, text, actionLabel, 
       : `<button type="button" class="btn btn--primary" data-action="${action}">${escapeHtml(actionLabel)}</button>`
     : "";
   const h = `h${headingLevel}`;
-  return `<div class="empty-state">${icon(iconName)}<${h}>${escapeHtml(title)}</${h}><p>${escapeHtml(text)}</p>${button}</div>`;
+  const picture = illustration(illustrationFor(iconName) ?? "") || icon(iconName);
+  return `<div class="empty-state">${picture}<${h}>${escapeHtml(title)}</${h}><p>${escapeHtml(text)}</p>${button}</div>`;
 }

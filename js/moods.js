@@ -46,16 +46,26 @@ export function findSort(key) {
 }
 
 /**
- * Genre IDs for a mood, matched by name against the /genres/anime list.
+ * The genres of a mood, found by name in the /genres/anime list, in the order the mood
+ * lists them (its main genre first). Names that are not in the list are skipped.
  * @param {string} moodKey
  * @param {{id: number, name: string}[]} genres
- * @returns {number[]}
+ * @returns {{id: number, name: string}[]}
  */
-export function genreIdsForMood(moodKey, genres) {
+export function resolveMoodGenres(moodKey, genres) {
   const mood = findMood(moodKey);
   if (!mood) return [];
-  const wanted = mood.genres.map((g) => g.toLowerCase());
-  return genres.filter((g) => wanted.includes(g.name.toLowerCase())).map((g) => g.id);
+  const found = [];
+  for (const wanted of mood.genres) {
+    const match = genres.find((g) => g.name.toLowerCase() === wanted.toLowerCase());
+    if (match && !found.some((f) => f.id === match.id)) found.push(match);
+  }
+  return found;
+}
+
+/** Genre IDs for a mood, main genre first. */
+export function genreIdsForMood(moodKey, genres) {
+  return resolveMoodGenres(moodKey, genres).map((g) => g.id);
 }
 
 /**

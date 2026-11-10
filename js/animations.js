@@ -42,7 +42,7 @@ function endHeroHold() {
  * another. About one second in total.
  */
 export function revealHero() {
-  const text = [".hero__title", ".hero__lead", ".hero__actions"];
+  const text = [".hero__title", ".hero__lead", ".hero__actions", ".hero__moon"];
   if (!g) {
     endHeroHold();
     return null;
@@ -53,16 +53,23 @@ export function revealHero() {
     return null;
   }
 
+  // The hand-drawn underline under "watch night" is drawn in with its stroke.
+  const underline = win.document.querySelector(".hero__underline path");
+  if (underline) {
+    underline.setAttribute("pathLength", "100"); // 100, not 1: GSAP rounds to whole numbers, so 0 to 1 would just pop
+    g.set(underline, { strokeDasharray: "100 1000", strokeDashoffset: 100 }); // a long gap, so the pattern can never wrap round and show a sliver or a dot
+  }
+
+  const rise = { y: 0, opacity: 1, clearProps: "transform" };
   const tl = g.timeline({ defaults: { ease: "power3.out" } });
-  tl.fromTo(".hero__title", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, clearProps: "transform" }, 0)
-    .fromTo(".hero__lead", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, clearProps: "transform" }, 0.1)
-    .fromTo(".hero__actions", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.8, clearProps: "transform" }, 0.2)
-    .fromTo(
-      ".hero-poster",
-      { y: 30, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.6, stagger: 0.08, clearProps: "transform" },
-      0.3
-    );
+  tl.fromTo(".hero__moon", { y: 12, opacity: 0 }, { ...rise, duration: 1.2, ease: "power2.out" }, 0)
+    .fromTo(".hero__title", { y: 30, opacity: 0 }, { ...rise, duration: 0.8 }, 0)
+    .fromTo(".hero__lead", { y: 30, opacity: 0 }, { ...rise, duration: 0.8 }, 0.1)
+    .fromTo(".hero__actions", { y: 30, opacity: 0 }, { ...rise, duration: 0.8 }, 0.2)
+    .fromTo(".hero-poster", { y: 30, opacity: 0 }, { ...rise, duration: 0.6, stagger: 0.08 }, 0.3);
+  if (underline) {
+    tl.to(underline, { strokeDashoffset: 0, duration: 0.7, ease: "power2.inOut", clearProps: "strokeDasharray,strokeDashoffset" }, 0.6);
+  }
   tl.eventCallback("onComplete", endHeroHold);
   return tl;
 }
@@ -315,14 +322,14 @@ export function revealDetail(root) {
 const LOGO_FLAG = "wnp:logo-played";
 
 /**
- * The moon in the logo draws itself once per visit (not on every page), and
- * tilts when the logo is hovered or focused.
+ * The moon and sparkle in the logo draw themselves once per visit (not on every page),
+ * and the moon tilts when the logo is hovered or focused.
  * @param {Element | null} mark the .brand__mark element in the header
  */
 export function animateLogo(mark) {
   const svg = mark?.querySelector?.("svg");
-  const path = svg?.querySelector("path");
-  if (!path || !motionAllowed()) return;
+  const paths = Array.from(svg?.querySelectorAll?.("path") ?? []);
+  if (!paths.length || !motionAllowed()) return;
 
   let alreadyPlayed = false;
   try {
@@ -333,11 +340,13 @@ export function animateLogo(mark) {
   }
 
   if (!alreadyPlayed) {
-    path.setAttribute("pathLength", "1"); // so the dash maths is the same for any drawing
-    g.set(path, { strokeDasharray: 1, strokeDashoffset: 1 });
+    for (const path of paths) path.setAttribute("pathLength", "100"); // the same dash maths for any drawing (100, because GSAP rounds to whole numbers)
+    g.set(paths, { strokeDasharray: "100 1000", strokeDashoffset: 100 });
     g.timeline()
       .fromTo(mark, { scale: 0.85 }, { scale: 1, duration: 0.45, ease: "back.out(2)", clearProps: "transform" }, 0)
-      .to(path, { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut", clearProps: "strokeDasharray,strokeDashoffset" }, 0);
+      .to(paths[0], { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut", clearProps: "strokeDasharray,strokeDashoffset" }, 0)
+      // The sparkle is drawn last, as the moon finishes.
+      .to(paths.slice(1), { strokeDashoffset: 0, duration: 0.4, ease: "power2.out", clearProps: "strokeDasharray,strokeDashoffset" }, 0.7);
   }
 
   const brand = mark.closest("a");
@@ -441,4 +450,50 @@ export function makeSortable(list, onCommit) {
   );
 
   return () => instances.forEach((d) => d?.kill());
+}
+
+/* ---------- 10. Ambient glow: a warm tint that drifts across the page as you scroll ---------- */
+
+/**
+ * Two soft amber glows sit fixed behind the page and drift across it as you scroll, so
+ * different parts of the page pick up a warm tint. They are tied to the scroll position
+ * (ScrollTrigger scrub), so they stop when you stop. Without motion they stay where the CSS
+ * puts them.
+ * @param {Element | null} root the .ambient element
+ */
+export function ambientGlow(root) {
+  if (!motionAllowed() || !ST || !root) return null;
+  const a = root.querySelector(".ambient__glow--a");
+  const b = root.querySelector(".ambient__glow--b");
+  if (!a || !b) return null;
+
+  // Positions are functions of the window size, so they are recalculated on resize.
+  const x = (percent) => () => win.innerWidth * (percent / 100);
+  const y = (percent) => () => win.innerHeight * (percent / 100);
+  // The home page hero already has its own glow, so the first one starts faint there.
+  const startA = win.document?.body?.dataset?.page === "home" ? 0.25 : 1;
+
+  const tl = g.timeline({
+    defaults: { ease: "none" },
+    scrollTrigger: {
+      start: 0,
+      end: () => Math.max(1, ST.maxScroll(win)),
+      scrub: 1,
+      invalidateOnRefresh: true,
+    },
+  });
+  tl.fromTo(a, { x: x(85), y: y(12), opacity: startA }, { x: x(10), y: y(48), opacity: 1, duration: 1 }, 0)
+    .to(a, { x: x(88), y: y(90), opacity: 0.7, duration: 1 }, 1)
+    .fromTo(b, { x: x(12), y: y(85), opacity: 0.4 }, { x: x(62), y: y(40), opacity: 0.95, duration: 1 }, 0)
+    .to(b, { x: x(92), y: y(8), opacity: 0.45, duration: 1 }, 1);
+
+  // Pages grow as their content loads, so work out the scroll length again when they do.
+  if (typeof win.ResizeObserver === "function") {
+    let timer;
+    new win.ResizeObserver(() => {
+      win.clearTimeout(timer);
+      timer = win.setTimeout(() => ST.refresh(), 200);
+    }).observe(win.document.body);
+  }
+  return tl;
 }

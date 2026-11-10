@@ -3,7 +3,7 @@
 // link on the detail page returns here exactly as the user left it.
 
 import { api, describeError } from "../api.js";
-import { MOODS, RUNTIME_RANGES, SORTS, findMood, findRange, findSort, genreIdsForMood, matchesRuntime } from "../moods.js";
+import { MOODS, RUNTIME_RANGES, SORTS, findMood, findRange, findSort, matchesRuntime, resolveMoodGenres } from "../moods.js";
 import { isInDraft, onChange } from "../storage.js";
 import { debounce, plural } from "../utils.js";
 import { crossfade, revealCards } from "../animations.js";
@@ -35,6 +35,7 @@ const el = {
   banners: document.getElementById("banner-region"),
   status: document.getElementById("results-status"),
   note: document.getElementById("runtime-note"),
+  moodNote: document.getElementById("mood-note"),
   results: document.getElementById("results"),
   empty: document.getElementById("empty-region"),
   more: document.getElementById("load-more"),
@@ -50,6 +51,9 @@ const state = {
   items: [],
   loading: false,
   autoPages: 0,
+  moodGenres: [], // the genres of the chosen mood, main genre first
+  genreOverride: null, // set when the genres together matched nothing and one genre is used instead
+  moodNote: "", // what to tell the user when the mood could not be matched exactly
   seen: new Set(), // ids whose card has already animated in
   freshLoad: false, // true until the first render after a new search or filter
   controller: null,
@@ -121,10 +125,11 @@ async function buildParams(page, signal) {
     params.orderBy = sort.orderBy;
     params.sort = sort.sort;
   }
+  state.moodGenres = [];
   if (state.mood) {
-    const genres = await ensureGenres(signal);
-    const ids = genreIdsForMood(state.mood, genres);
-    if (ids.length) params.genres = ids.join(",");
+    state.moodGenres = resolveMoodGenres(state.mood, await ensureGenres(signal));
+    if (state.genreOverride) params.genres = state.genreOverride;
+    else if (state.moodGenres.length) params.genres = state.moodGenres.map((g) => g.id).join(",");
   }
   if (state.runtime === "movie") params.type = "movie";
   return params;
@@ -149,6 +154,8 @@ async function load({ append = false } = {}) {
     state.page = 0;
     state.autoPages = 0;
     state.seen = new Set();
+    state.genreOverride = null;
+    state.moodNote = "";
     state.freshLoad = true;
     el.results.innerHTML = skeletonCardsHTML(8);
     el.status.textContent = "Loading titles";
@@ -162,8 +169,28 @@ async function load({ append = false } = {}) {
   try {
     const nextPage = state.page + 1;
     const params = await buildParams(nextPage, controller.signal);
-    const result = await api.searchAnime(params);
+    let result = await api.searchAnime(params);
     if (controller.signal.aborted) return;
+
+    // A title must have EVERY genre of a mood, so a mood can match nothing. When that happens,
+    // try its genres one at a time (main genre first) rather than showing a dead end.
+    if (!append && state.mood) {
+      const mood = findMood(state.mood);
+      if (state.moodGenres.length === 0) {
+        state.moodNote = `We couldn't match the ${mood.label} mood to the catalogue, so these results aren't filtered.`;
+      } else if (result.items.length === 0 && state.moodGenres.length > 1) {
+        for (const genre of state.moodGenres) {
+          const single = await api.searchAnime({ ...params, genres: String(genre.id) });
+          if (controller.signal.aborted) return;
+          if (single.items.length) {
+            result = single;
+            state.genreOverride = String(genre.id);
+            state.moodNote = `No titles matched all of the ${mood.label} mood's genres at once, so these match ${genre.name}.`;
+            break;
+          }
+        }
+      }
+    }
 
     const known = new Set(state.items.map((i) => i.id));
     const fresh = result.items.filter((i) => !known.has(i.id));
@@ -216,6 +243,8 @@ function render({ focusId } = {}) {
   revealCards(el.results, state.seen);
   const clientRange = state.runtime && !findRange(state.runtime)?.server;
   el.note.hidden = !clientRange || items.length === 0;
+  el.moodNote.hidden = !state.moodNote || items.length === 0;
+  el.moodNote.textContent = state.moodNote;
   el.more.hidden = !state.hasNext || Boolean(state.lastError && items.length === 0);
 
   if (state.lastError) {
@@ -240,10 +269,11 @@ function render({ focusId } = {}) {
         action: "load-more",
       });
     } else {
-      const label = state.q ? `No results for "${state.q}"` : "No titles found";
+      const mood = findMood(state.mood);
+      const label = state.q ? `No results for "${state.q}"` : mood ? `Nothing matched the ${mood.label} mood right now` : "No titles found";
       el.empty.innerHTML = emptyStateHTML({
         title: label,
-        text: "Try another search or clear your filters.",
+        text: mood && !state.q ? "Try another mood or clear your filters." : "Try another search or clear your filters.",
         actionLabel: "Clear filters",
         action: "clear",
       });

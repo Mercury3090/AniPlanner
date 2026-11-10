@@ -6,16 +6,20 @@
 //      and the page is already fully visible.
 //   2. If the visitor prefers reduced motion, movement is dropped. Text still appears
 //      (a quick fade for the hero), and nothing slides, scales or counts.
-//   3. Only transform and opacity are animated, so motion stays smooth.
+//   3. Layout is never animated (no width, height, top, left or margin). Motion is transform and
+//      opacity, plus the stroke of the logo's SVG moon, so it stays smooth.
 //
 // GSAP and ScrollTrigger are loaded by <script> tags (js/vendor) and found on window.
 
+import { dropIndex, shiftsFor } from "./planner-core.js";
 import { formatMinutes } from "./utils.js";
 
 const win = typeof window !== "undefined" ? window : undefined;
 const g = win?.gsap;
 const ST = win?.ScrollTrigger;
+const Drag = win?.Draggable;
 if (g && ST) g.registerPlugin(ST);
+if (g && Drag) g.registerPlugin(Drag);
 
 function prefersReducedMotion() {
   return Boolean(win?.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
@@ -83,20 +87,48 @@ export function revealOnScroll(items) {
 }
 
 /**
- * Animates only the cards that have not been seen yet, so loading more results (or
- * redrawing the list) never replays the animation for cards already on screen.
+ * Animates only the items that have not been seen yet, so loading more (or redrawing
+ * a list) never replays the animation for items already on screen.
+ *
  * @param {ParentNode} container
  * @param {Set<string>} seen ids already animated; updated in place
+ * @param {{item?: string, id?: (el: Element) => string | null | undefined, scroll?: boolean}} [options]
+ *   item: selector for the items; id: how to read an item's id (skeletons have none and are skipped);
+ *   scroll: reveal as they scroll into view (true) or straight away (false)
  */
-export function revealCards(container, seen) {
+export function revealCards(container, seen, { item = ".card-grid__item", id = (el) => el.querySelector("[data-id]")?.dataset.id, scroll = true } = {}) {
   const fresh = [];
-  for (const item of container.querySelectorAll(".card-grid__item")) {
-    const id = item.querySelector("[data-id]")?.dataset.id;
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    fresh.push(item);
+  for (const el of container.querySelectorAll(item)) {
+    const key = id(el);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    fresh.push(el);
   }
-  revealOnScroll(fresh);
+  if (scroll) revealOnScroll(fresh);
+  else enterItems(fresh);
+}
+
+/** Items slide up and fade in straight away (for lists near the top of a page). */
+export function enterItems(items) {
+  const list = Array.from(items ?? []);
+  if (!list.length || !motionAllowed()) return;
+  g.fromTo(list, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: "power2.out", clearProps: "transform" });
+}
+
+/**
+ * Items ease out, then done() runs (that is where the real removal happens).
+ * Without motion, done() runs at once.
+ * @param {ArrayLike<Element>} items
+ * @param {() => void} done
+ * @param {{x?: number, y?: number, stagger?: number}} [options]
+ */
+export function exitItems(items, done, { x = 0, y = -6, stagger = 0.04 } = {}) {
+  const list = Array.from(items ?? []);
+  if (!list.length || !motionAllowed()) {
+    done();
+    return;
+  }
+  g.to(list, { opacity: 0, x, y, scale: 0.97, duration: 0.25, stagger, ease: "power1.in", onComplete: done });
 }
 
 /* ---------- 3. Skeleton to content (crossfade) ---------- */
@@ -179,13 +211,16 @@ export function formatCount(kind, value, { prefix = "", suffix = "" } = {}) {
  * @param {number} to
  * @param {"minutes" | "number"} kind
  * @param {{prefix?: string, suffix?: string}} [parts]
+ * @param {number} [delay] seconds to wait before counting starts
  */
-export function countUp(el, from, to, kind, parts = {}) {
+export function countUp(el, from, to, kind, parts = {}, delay = 0) {
   if (!motionAllowed() || from === to) return;
   const finalText = el.textContent;
   const counter = { v: from };
+  if (delay > 0) el.textContent = formatCount(kind, from, parts);
   g.to(counter, {
     v: to,
+    delay,
     duration: 0.8,
     ease: "power1.out",
     onUpdate: () => {
@@ -229,4 +264,181 @@ export function pillPop(pill) {
   if (!motionAllowed()) return false;
   g.fromTo(pill, { y: 14, scale: 0.9, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(1.7)", clearProps: "transform,opacity" });
   return true;
+}
+
+/* ---------- 6. Page headers: every page opens the same way ---------- */
+
+/**
+ * The heading and intro of Discover, Planner and Saved plans rise in together.
+ * Elements opt in with data-header-reveal. They are held hidden only while GSAP is
+ * about to reveal them (the has-motion class), and released after four seconds at most.
+ */
+export function revealPageHeader() {
+  const targets = Array.from(win?.document?.querySelectorAll("[data-header-reveal]") ?? []);
+  if (!targets.length) return null;
+  if (!motionAllowed()) {
+    endHeroHold();
+    return null;
+  }
+  return g.fromTo(
+    targets,
+    { y: 16, opacity: 0 },
+    { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: "power2.out", clearProps: "transform", onComplete: endHeroHold }
+  );
+}
+
+/* ---------- 7. Detail page: a timeline of the page arriving ---------- */
+
+/**
+ * Poster, title and badges, runtime strip, then the Add button arrive in sequence.
+ * The sections below reveal as they scroll into view.
+ * @param {ParentNode} root
+ * @returns {object | null} the timeline
+ */
+export function revealDetail(root) {
+  if (!motionAllowed()) return null;
+  const pick = (selector) => root.querySelectorAll(selector);
+  const rise = { y: 0, opacity: 1, clearProps: "transform" };
+  const from = { y: 24, opacity: 0 };
+
+  const tl = g.timeline({ defaults: { ease: "power3.out" } });
+  tl.fromTo(pick(".detail__poster"), from, { ...rise, duration: 0.6 }, 0)
+    .fromTo(pick(".detail__title, .detail__summary .cluster"), from, { ...rise, duration: 0.6, stagger: 0.08 }, 0.1)
+    .fromTo(pick(".runtime-strip, .runtime-note"), from, { ...rise, duration: 0.6, stagger: 0.08 }, 0.25)
+    .fromTo(pick(".detail__actions"), from, { ...rise, duration: 0.6 }, 0.4);
+  revealOnScroll(pick(".detail__section:not(#related)"));
+  return tl;
+}
+
+/* ---------- 8. Logo: an SVG moon that draws itself ---------- */
+
+const LOGO_FLAG = "wnp:logo-played";
+
+/**
+ * The moon in the logo draws itself once per visit (not on every page), and
+ * tilts when the logo is hovered or focused.
+ * @param {Element | null} mark the .brand__mark element in the header
+ */
+export function animateLogo(mark) {
+  const svg = mark?.querySelector?.("svg");
+  const path = svg?.querySelector("path");
+  if (!path || !motionAllowed()) return;
+
+  let alreadyPlayed = false;
+  try {
+    alreadyPlayed = win.sessionStorage.getItem(LOGO_FLAG) === "1";
+    win.sessionStorage.setItem(LOGO_FLAG, "1");
+  } catch {
+    // Storage blocked: it simply plays every time.
+  }
+
+  if (!alreadyPlayed) {
+    path.setAttribute("pathLength", "1"); // so the dash maths is the same for any drawing
+    g.set(path, { strokeDasharray: 1, strokeDashoffset: 1 });
+    g.timeline()
+      .fromTo(mark, { scale: 0.85 }, { scale: 1, duration: 0.45, ease: "back.out(2)", clearProps: "transform" }, 0)
+      .to(path, { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut", clearProps: "strokeDasharray,strokeDashoffset" }, 0);
+  }
+
+  const brand = mark.closest("a");
+  const tilt = (angle) => g.to(svg, { rotate: angle, duration: 0.4, ease: "power2.out", overwrite: "auto" });
+  brand?.addEventListener("mouseenter", () => tilt(-18));
+  brand?.addEventListener("mouseleave", () => tilt(0));
+  brand?.addEventListener("focus", () => tilt(-18));
+  brand?.addEventListener("blur", () => tilt(0));
+}
+
+/* ---------- 9. Drag to reorder (Draggable) ---------- */
+
+/**
+ * Makes the rows of a list reorderable by dragging their handles. While a row is
+ * dragged the others slide aside to make room. On release the new position is
+ * handed to onCommit, and the dropped row settles into its place.
+ *
+ * Rows need a [data-id] and a [data-handle] button. Pointer dragging is an
+ * enhancement: reordering with the keyboard is handled by the page itself.
+ *
+ * @param {HTMLElement} list
+ * @param {(id: string, toIndex: number) => void} onCommit
+ * @returns {() => void} call to remove all dragging from the list
+ */
+export function makeSortable(list, onCommit) {
+  if (!g || !Drag) return () => {};
+  const rows = Array.from(list.querySelectorAll(".title-row[data-id]"));
+  if (rows.length < 2) return () => {};
+
+  const slide = prefersReducedMotion() ? 0 : 0.2;
+  let layout = null; // measured when a drag starts
+
+  const measure = (from) => {
+    const listTop = list.getBoundingClientRect().top;
+    const rects = rows.map((row) => row.getBoundingClientRect());
+    return {
+      from,
+      to: from,
+      heights: rects.map((r) => r.height),
+      mids: rects.map((r) => r.top - listTop + r.height / 2),
+      gap: parseFloat(win.getComputedStyle(list).rowGap) || 16,
+    };
+  };
+
+  const instances = rows.map((row, index) =>
+    Drag.create(row, {
+      trigger: row.querySelector("[data-handle]"),
+      type: "y",
+      bounds: list,
+      zIndexBoost: true,
+      edgeResistance: 0.85,
+      cursor: "grab",
+      activeCursor: "grabbing",
+      onPress() {
+        layout = measure(index);
+        row.classList.add("is-dragging");
+      },
+      onDrag() {
+        const listTop = list.getBoundingClientRect().top;
+        const rect = row.getBoundingClientRect();
+        const to = dropIndex(layout.mids, layout.from, rect.top - listTop + rect.height / 2);
+        if (to === layout.to) return;
+        layout.to = to;
+        const shifts = shiftsFor(layout.heights, layout.gap, layout.from, to);
+        rows.forEach((other, i) => {
+          if (i !== layout.from) g.to(other, { y: shifts[i], duration: slide, ease: "power2.out", overwrite: "auto" });
+        });
+      },
+      onRelease() {
+        if (!layout) return;
+        const { from, to } = layout;
+        layout = null;
+        row.classList.remove("is-dragging");
+
+        if (from === to) {
+          // Dropped where it started: glide back and clear everything.
+          g.to(rows, { y: 0, duration: slide, ease: "power2.out", overwrite: "auto", clearProps: "transform,zIndex" });
+          return;
+        }
+
+        // Commit the new order (this redraws the list in the new order), then glide the
+        // dropped row from where it was released into its real place. Done on the next
+        // tick so we are not tearing the drag down from inside its own callback.
+        const id = row.dataset.id;
+        const releasedTop = row.getBoundingClientRect().top;
+        win.setTimeout(() => {
+          onCommit(id, to);
+          if (list.contains(row)) {
+            // The order was not saved (the list was not redrawn), so put everything back.
+            g.to(rows, { y: 0, duration: slide, ease: "power2.out", overwrite: "auto", clearProps: "transform,zIndex" });
+            return;
+          }
+          const placed = list.querySelector(`.title-row[data-id="${id}"]`);
+          if (placed && slide > 0) {
+            const delta = releasedTop - placed.getBoundingClientRect().top;
+            g.fromTo(placed, { y: delta }, { y: 0, duration: 0.25, ease: "power2.out", clearProps: "transform" });
+          }
+        }, 0);
+      },
+    })[0]
+  );
+
+  return () => instances.forEach((d) => d?.kill());
 }

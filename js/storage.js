@@ -1,6 +1,8 @@
 // localStorage layer. Every read and write is wrapped, because storage can be
 // blocked (private mode) or full. Failures return { ok: false } and never throw.
 
+import { moveItem } from "./planner-core.js";
+
 const DRAFT_KEY = "wnp:draft";
 const PLANS_KEY = "wnp:plans";
 const CHANGE_EVENT = "wnp:change";
@@ -87,6 +89,20 @@ export function removeFromDraft(id) {
   const index = draft.titleIds.indexOf(numeric);
   const result = saveDraft({ ...draft, titleIds: draft.titleIds.filter((x) => x !== numeric) });
   return { ...result, index };
+}
+
+/**
+ * Moves a title to a new position in the plan, which changes the order it is watched in.
+ * @returns {{ok: boolean, moved: boolean, from?: number, to?: number}}
+ */
+export function moveInDraft(id, toIndex) {
+  const draft = getDraft();
+  const from = draft.titleIds.indexOf(Number(id));
+  if (from === -1) return { ok: true, moved: false };
+  const to = Math.min(Math.max(Number(toIndex), 0), draft.titleIds.length - 1);
+  if (!Number.isInteger(to) || to === from) return { ok: true, moved: false, from, to: from };
+  const result = saveDraft({ ...draft, titleIds: moveItem(draft.titleIds, from, to) });
+  return { ...result, moved: result.ok, from, to };
 }
 
 export function clearDraft() {

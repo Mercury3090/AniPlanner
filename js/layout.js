@@ -5,7 +5,7 @@
 import { icon } from "./icons.js";
 import { getDraft, onChange } from "./storage.js";
 import { plural } from "./utils.js";
-import { pillPop, toastIn, toastOut } from "./animations.js";
+import { animateLogo, pillPop, revealPageHeader, toastIn, toastOut } from "./animations.js";
 
 const LINKS = [
   { key: "home", href: "index.html", label: "Home" },
@@ -170,12 +170,14 @@ function init() {
     header.classList.add("site-header");
     header.innerHTML = headerMarkup(current);
     setupMenu(header);
+    animateLogo(header.querySelector(".brand__mark"));
   }
   if (footer) {
     footer.classList.add("site-footer");
     footer.innerHTML = footerMarkup();
   }
 
+  revealPageHeader();
   updateCount();
   onChange(updateCount);
   pillCount = getDraft().titleIds.length;

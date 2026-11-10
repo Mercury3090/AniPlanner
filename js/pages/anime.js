@@ -4,10 +4,11 @@
 import { api, describeError } from "../api.js";
 import { getDraft, isInDraft, onChange } from "../storage.js";
 import { debounce, escapeHtml } from "../utils.js";
-import { crossfade } from "../animations.js";
+import { countUp, crossfade, revealDetail, revealOnScroll } from "../animations.js";
 import { icon } from "../icons.js";
 import { togglePlan } from "../plan-actions.js";
 import { describeRuntime, isSafeTrailerUrl, parseAnimeId, truncate } from "../detail.js";
+import { runtimeOf } from "../planner-core.js";
 import { addButtonHTML, attachImageFallback, bannerHTML, emptyStateHTML, placeholderHTML, setAddButtonState, statusBadgeHTML } from "../ui.js";
 
 const DEFAULT_TITLE = document.title;
@@ -82,8 +83,13 @@ function scoreBadgeHTML(item) {
 function runtimeHTML(item) {
   const hours = getDraft().hoursPerEvening;
   const { stats, note } = describeRuntime(item, hours);
+  const counted = runtimeOf(item);
   const rows = stats
-    .map((s) => `<div class="runtime-strip__item${s.highlight ? " runtime-strip__item--total" : ""}"><dt>${escapeHtml(s.label)}</dt><dd>${escapeHtml(s.value)}</dd></div>`)
+    .map((s) => {
+      const total = s.key === "total" && counted.counted;
+      const count = total ? ` data-count="minutes" data-to="${counted.minutes}" data-prefix="${counted.estimated ? "About " : ""}"` : "";
+      return `<div class="runtime-strip__item${s.highlight ? " runtime-strip__item--total" : ""}"><dt>${escapeHtml(s.label)}</dt><dd${count}>${escapeHtml(s.value)}</dd></div>`;
+    })
     .join("");
   const noteHTML = note ? `<p class="runtime-note">${icon("alert")}<span>${escapeHtml(note)}</span></p>` : "";
   return `<dl class="runtime-strip">${rows}</dl>${noteHTML}`;
@@ -150,10 +156,18 @@ function renderItem(item) {
       <div id="related-body"></div>
     </section>`;
 
-  // The skeleton fades out while the real page fades in.
-  crossfade(el.detail, () => {
-    el.detail.innerHTML = markup;
-  });
+  // The skeleton fades out while the page arrives (poster, title, runtime strip, button),
+  // and the total runtime counts up as the strip appears.
+  crossfade(
+    el.detail,
+    () => {
+      el.detail.innerHTML = markup;
+    },
+    { fadeContent: false }
+  );
+  revealDetail(el.detail);
+  const total = el.detail.querySelector("[data-count]");
+  if (total) countUp(total, 0, Number(total.dataset.to), "minutes", { prefix: total.dataset.prefix ?? "" }, 0.45);
   el.detail.removeAttribute("aria-busy");
   document.title = `${item.title} | AniPlanner`;
   const description = document.querySelector('meta[name="description"]');
@@ -215,6 +229,7 @@ async function loadRelated(id) {
       return;
     }
     body.innerHTML = `<ul class="related-grid">${items.map(relatedCardHTML).join("")}</ul>`;
+    revealOnScroll(body.querySelectorAll(".related-grid > li"));
   } catch (error) {
     if (error.kind === "aborted") return;
     body.innerHTML = bannerHTML({

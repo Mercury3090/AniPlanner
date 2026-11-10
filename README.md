@@ -17,7 +17,7 @@ Built for Interactive Media 3B (Advanced Web Development with GSAP). It implemen
 ## Tech
 
 - HTML, CSS and JavaScript (ES modules), no build step
-- [GSAP](https://gsap.com) 3 with ScrollTrigger for motion, bundled in `js/vendor`
+- [GSAP](https://gsap.com) 3 with ScrollTrigger and Draggable for motion, bundled in `js/vendor`
 - [Tenrai](https://tenrai.org), a free keyless mirror of MyAnimeList data that serves the Jikan v4 format, for all anime data (the original public Jikan API closed on 1 October 2026)
 - `localStorage` for the current plan and saved plans, `sessionStorage` for API caching
 
@@ -55,7 +55,7 @@ js/
   storage.js        localStorage layer for the draft plan and saved plans
   utils.js          Duration parsing, formatting and helpers
   animations.js     All GSAP animation (timeline, ScrollTrigger, tweens), with reduced-motion handling
-  vendor/           GSAP and ScrollTrigger, bundled so the site never depends on a CDN
+  vendor/           GSAP, ScrollTrigger and Draggable, bundled so the site never depends on a CDN
   icons.js          Inline SVG icon set
   layout.js         Shared header and footer, mobile menu, toast helper
   moods.js          Mood, watch-time range and sort definitions for Discover
@@ -140,20 +140,30 @@ On Home, Discover and the detail pages, a "View plan" pill appears in the bottom
 
 ## Motion
 
-All animation lives in `js/animations.js`. The page scripts say when something should animate, and that file decides how. Every animation uses only `transform` and `opacity`.
+All animation lives in `js/animations.js`. The page scripts say when something should animate, and that file decides how. Layout is never animated: motion is `transform` and `opacity`, plus the stroke of the logo's SVG moon.
+
+Every animation has one of four jobs: orient (where am I), give feedback (it worked), explain (what changed), or delight, used sparingly. They share one motion language: 0.2 to 0.8 seconds, `power` and `sine` easing, nothing that loops, and nothing that blocks a click.
 
 | Animation | Where | How |
 | --- | --- | --- |
 | Hero reveal | Home | A GSAP timeline: headline, lead, buttons, then the posters, staggered, about one second in total (`power3.out`) |
-| Cards and steps rise in | Home, Discover | ScrollTrigger batches fade and lift items in as they reach the lower part of the screen. Only new cards animate, so Load more and filter changes never replay the cards already shown |
+| Page headings | Discover, Planner, Saved plans | The heading and intro rise in together, so every page opens the same way |
+| Detail page arrives | Anime detail | A timeline brings in the poster, title and badges, runtime strip and button in sequence. The total runtime counts up as the strip appears, and the sections below reveal on scroll |
+| Cards and steps rise in | Home, Discover, related titles | ScrollTrigger batches fade and lift items in as they reach the lower part of the screen. Only new cards animate, so Load more and filter changes never replay the cards already shown |
+| Saved plans | Saved plans | Plan cards stagger in. Delete fades the card out before the plan is removed, and Undo brings it back with the entrance animation |
 | Skeleton to content | Home, Discover, detail | The skeleton is copied over the container and fades out while the real content fades in (0.4s, `sine.inOut`), so nothing jumps |
+| Planner rows | Planner | Titles slide in when they are added or finish loading, and ease out before they are removed. Undo brings a row back where it was |
 | Evenings fill | Planner | Each evening's bar grows from the left with a stagger (`back.out(1.4)`), and the total runtime and evenings count up from their previous values |
+| Drag to reorder (Draggable) | Planner | Titles are watched in list order, so the order matters. Drag a handle and the other rows slide aside to make room. On release the new order is saved and the dropped row settles into place. The schedule redraws in the new order |
+| Logo (SVG) | Every page | The moon in the logo draws itself once per visit, and tilts when the logo is hovered or focused |
 | Confirmations | Everywhere | The Add button icon pops, toasts slide in and fade out, and the View plan pill pops when a title is added |
+
+Reordering is also fully available from the keyboard: focus a title's handle and press the up or down arrow keys, or Home and End. Each move is announced to screen readers, and focus stays on the handle after the list redraws. The handles appear once every title has loaded and there is more than one, so a plan is never reordered while part of it is still missing.
 
 How it stays safe:
 
-- **Reduced motion.** If the visitor prefers reduced motion, nothing slides, scales or counts. The hero text still appears with a quick fade, and everything else is simply there.
-- **No GSAP, no problem.** If GSAP does not load, every function does nothing and the page is already fully visible. The hero text is held back only while GSAP is about to reveal it, and is released after four seconds at the latest.
+- **Reduced motion.** If the visitor prefers reduced motion, nothing slides, scales, counts or draws. The hero text still appears with a quick fade, and everything else is simply there. Dragging still works, because reordering is an action rather than decoration, but rows jump into place instead of sliding.
+- **No GSAP, no problem.** If GSAP does not load, every function does nothing and the page is already fully visible. The hero text and page headings are held back only while GSAP is about to reveal them, and are released after four seconds at the latest. Reordering by keyboard keeps working without GSAP.
 - **Screen readers.** Numbers that count up are not a live region, so a screen reader never reads the in-between values. The finished result is announced once from a hidden message.
 - **Always interactive.** The skeleton copy used for the crossfade ignores clicks and is hidden from assistive technology, so the page can be used while it fades.
 
@@ -161,6 +171,7 @@ How it stays safe:
 
 - Semantic landmarks, one `h1` per page, and a skip link
 - Visible focus ring on every interactive element
+- Titles can be reordered with the keyboard as well as by dragging, with each move announced
 - Text and control colours checked against WCAG 2.2 contrast ratios
 - Tap targets of at least 44 by 44 pixels
 - Status is never shown by colour alone: badges and messages pair an icon with text

@@ -31,6 +31,7 @@ const PATHS = {
     '<path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2z"/><path d="M3 16l5 -5l4 4l3 -3l6 6"/><path d="M15 8h.01"/>',
   filter: '<path d="M4 6h16"/><path d="M7 12h10"/><path d="M10 18h4"/>',
   "chevron-down": '<path d="M6 9l6 6l6 -6"/>',
+  grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
 };
 
 /**

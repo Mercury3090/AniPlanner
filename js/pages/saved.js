@@ -7,6 +7,7 @@ import { escapeHtml, plural } from "../utils.js";
 import { icon } from "../icons.js";
 import { showToast } from "../layout.js";
 import { attachImageFallback, bannerHTML, emptyStateHTML } from "../ui.js";
+import { exitItems, revealCards } from "../animations.js";
 
 const el = {
   heading: document.getElementById("saved-heading"),
@@ -19,6 +20,7 @@ const el = {
 };
 
 let focusIndex = null;
+const seen = new Set(); // plan ids whose card has already animated in
 
 /* ---------- Rendering ---------- */
 
@@ -80,6 +82,11 @@ function render() {
         href: "discover.html",
       });
 
+  revealCards(el.plans, seen, {
+    item: ".plan-grid > li",
+    id: (li) => li.querySelector("[data-id]")?.dataset.id ?? (li.querySelector("[data-new]") ? "new" : null),
+  });
+
   if (focusIndex !== null) {
     const buttons = el.plans.querySelectorAll("[data-delete]");
     (buttons[Math.min(focusIndex, buttons.length - 1)] ?? el.heading).focus();
@@ -137,18 +144,29 @@ el.plans.addEventListener("click", (event) => {
 
   const remove = event.target.closest("[data-delete]");
   if (remove) {
+    const card = remove.closest(".plan-card");
+    if (card.dataset.leaving) return; // already on its way out
+    card.dataset.leaving = "1";
+    const id = remove.dataset.delete;
     focusIndex = [...el.plans.querySelectorAll("[data-delete]")].indexOf(remove);
-    const result = deletePlan(remove.dataset.delete);
-    if (!result.ok || !result.removed) {
-      focusIndex = null;
-      el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't delete that plan. Storage may be blocked." });
-      return;
-    }
-    const { removed } = result;
-    showToast(`Deleted "${removed.name}"`, {
-      tone: "removed",
-      duration: 5000,
-      action: { label: "Undo", onClick: () => restorePlan(removed) },
+
+    // The card eases out first, then the plan is really deleted.
+    exitItems([card], () => {
+      const result = deletePlan(id);
+      if (!result.ok || !result.removed) {
+        focusIndex = null;
+        delete card.dataset.leaving;
+        el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't delete that plan. Storage may be blocked." });
+        render();
+        return;
+      }
+      seen.delete(id); // so Undo brings the card back with the entrance animation
+      const { removed } = result;
+      showToast(`Deleted "${removed.name}"`, {
+        tone: "removed",
+        duration: 5000,
+        action: { label: "Undo", onClick: () => restorePlan(removed) },
+      });
     });
   }
 });

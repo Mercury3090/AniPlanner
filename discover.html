@@ -17,6 +17,17 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/pages.css" />
+    <script>
+      // The hero text and page headings start hidden only when GSAP is about to reveal them.
+      // If GSAP has not taken over after 4 seconds, everything is shown anyway.
+      (function () {
+        var root = document.documentElement;
+        if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+          root.classList.add("has-motion");
+          setTimeout(function () { root.classList.remove("has-motion"); }, 4000);
+        }
+      })();
+    </script>
     <script src="js/vendor/gsap.min.js" defer></script>
     <script src="js/vendor/ScrollTrigger.min.js" defer></script>
   </head>
@@ -25,8 +36,8 @@
     <header id="site-header"></header>
 
     <main id="main" class="page container" tabindex="-1">
-      <h1>Discover</h1>
-      <p class="muted">Search by title, or filter by mood and total watch time.</p>
+      <h1 data-header-reveal>Discover</h1>
+      <p class="muted" data-header-reveal>Search by title, or filter by mood and total watch time.</p>
 
       <form id="search-form" role="search" class="search" novalidate>
         <div class="field">

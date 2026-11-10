@@ -176,3 +176,57 @@ export function toggleDay(days, day) {
   }
   return { days: [...set].sort((a, b) => a - b), blocked: false };
 }
+
+/* ---------- Reordering titles (pure, so the drag logic can be tested without a browser) ---------- */
+
+/**
+ * Returns a copy of the list with one item moved to a new position.
+ * @template T
+ * @param {T[]} list
+ * @param {number} from
+ * @param {number} to
+ * @returns {T[]}
+ */
+export function moveItem(list, from, to) {
+  const next = [...list];
+  if (from === to || from < 0 || from >= next.length) return next;
+  const target = Math.min(Math.max(to, 0), next.length - 1);
+  const [item] = next.splice(from, 1);
+  next.splice(target, 0, item);
+  return next;
+}
+
+/**
+ * Where a dragged row would land, judged by its vertical middle compared with the
+ * middles of the other rows. Every other row whose middle is above the dragged row's
+ * middle stays ahead of it.
+ * @param {number[]} mids vertical middle of every row, in list order, dragged row included
+ * @param {number} draggedIndex
+ * @param {number} draggedMid the dragged row's current vertical middle
+ */
+export function dropIndex(mids, draggedIndex, draggedMid) {
+  let index = 0;
+  mids.forEach((mid, i) => {
+    if (i !== draggedIndex && mid < draggedMid) index += 1;
+  });
+  return index;
+}
+
+/**
+ * How far each row must shift to make room while one row is dragged from one
+ * position to another. The dragged row itself is controlled by the pointer, so it is 0.
+ * @param {number[]} heights height of every row, in list order
+ * @param {number} gap space between rows
+ * @param {number} from where the dragged row started
+ * @param {number} to where it would land now
+ * @returns {number[]}
+ */
+export function shiftsFor(heights, gap, from, to) {
+  const room = heights[from] + gap;
+  return heights.map((_, i) => {
+    if (i === from) return 0;
+    if (from < to && i > from && i <= to) return -room;
+    if (from > to && i >= to && i < from) return room;
+    return 0;
+  });
+}

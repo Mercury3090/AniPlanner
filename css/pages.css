@@ -514,4 +514,33 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
    by the animation code, by reduced motion, or after 4 seconds, so nothing stays hidden. */
 .has-motion .hero__title,
 .has-motion .hero__lead,
-.has-motion .hero__actions { opacity: 0; }
+.has-motion .hero__actions,
+.has-motion [data-header-reveal] { opacity: 0; }
+
+/* ---------- Planner: drag to reorder ---------- */
+.title-list { position: relative; }
+.title-row--sortable { grid-template-columns: 44px 56px minmax(0, 1fr) auto; gap: var(--space-sm) var(--space-md); }
+.drag-handle {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none; /* lets a finger drag the row instead of scrolling the page */
+}
+.drag-handle:hover { background: var(--color-surface-raised); color: var(--color-text); }
+.drag-handle:active { cursor: grabbing; }
+.title-row.is-dragging {
+  border-color: var(--color-primary);
+  background: var(--color-surface-raised);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+  cursor: grabbing;
+}
+@media (max-width: 479px) {
+  .title-row--sortable { grid-template-columns: 44px 48px minmax(0, 1fr) auto; gap: var(--space-sm); }
+}

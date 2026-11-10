@@ -4,7 +4,7 @@
 // titles, and draws the result.
 
 import { api, describeError } from "../api.js";
-import { addToDraft, findSavedPlan, getDraft, onChange, removeFromDraft, saveDraft, savePlan, storageAvailable } from "../storage.js";
+import { addToDraft, findSavedPlan, getDraft, moveInDraft, onChange, removeFromDraft, saveDraft, savePlan, storageAvailable } from "../storage.js";
 import {
   MAX_HOURS,
   MIN_HOURS,
@@ -21,7 +21,7 @@ import { icon } from "../icons.js";
 import { clearPlan, togglePlan } from "../plan-actions.js";
 import { showToast } from "../layout.js";
 import { attachImageFallback, bannerHTML, emptyStateHTML, placeholderHTML, runtimeLines } from "../ui.js";
-import { countUp, fillEvenings } from "../animations.js";
+import { countUp, exitItems, fillEvenings, makeSortable, revealCards } from "../animations.js";
 
 const INITIAL_EVENINGS = 14;
 
@@ -41,6 +41,7 @@ const el = {
   saveName: document.getElementById("save-name"),
   summary: document.getElementById("summary"),
   announce: document.getElementById("summary-announce"),
+  reorderAnnounce: document.getElementById("reorder-announce"),
   planName: document.getElementById("plan-name"),
   save: document.getElementById("save-plan"),
   scheduleSection: document.getElementById("schedule-section"),
@@ -50,6 +51,8 @@ const el = {
 };
 
 const state = {
+  seenRows: new Set(), // title ids whose row has already animated in
+  stopSorting: () => {}, // removes dragging from the list
   counts: { minutes: 0, evenings: 0 }, // what the summary last showed, so numbers count from there
   skipScheduleAnimation: false,
   summary: null, // totals from the latest render, saved with a plan
@@ -184,12 +187,16 @@ function announceSummary(isEmpty) {
 
 /* ---------- Rendering ---------- */
 
-function titleRowHTML(item) {
+function titleRowHTML(item, sort) {
   const { meta, total } = runtimeLines(item);
   const title = escapeHtml(item.title);
+  const handle = sort
+    ? `<button type="button" class="drag-handle" data-handle="${item.id}" aria-describedby="reorder-help" aria-label="Reorder ${title}, position ${sort.position} of ${sort.total}">${icon("grip")}</button>`
+    : "";
   const media = item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="56" height="84" loading="lazy" decoding="async">` : placeholderHTML();
   return `
-    <li class="title-row" data-id="${item.id}">
+    <li class="title-row${sort ? " title-row--sortable" : ""}" data-id="${item.id}">
+      ${handle}
       <div class="title-row__media">${media}</div>
       <div class="title-row__body">
         <h3 class="title-row__title"><a href="anime.html?id=${item.id}">${title}</a></h3>
@@ -274,6 +281,8 @@ function render() {
   const draft = getDraft();
   const ids = draft.titleIds;
   const isEmpty = ids.length === 0;
+  // Reordering is offered once every title has loaded and there is more than one.
+  const canSort = ids.length >= 2 && state.pending.size === 0 && ids.every((id) => state.items.has(id));
 
   syncControls();
 
@@ -284,18 +293,27 @@ function render() {
       ? `[data-remove="${active.dataset.remove}"]`
       : active.dataset.retry
         ? `[data-retry="${active.dataset.retry}"]`
-        : null
+        : active.dataset.handle
+          ? `[data-handle="${active.dataset.handle}"]`
+          : null
     : null;
 
   // Titles
   const listChanged = setHTML(el.list, ids
-    .map((id) => {
-      if (state.items.has(id)) return titleRowHTML(state.items.get(id));
+    .map((id, index) => {
+      if (state.items.has(id)) return titleRowHTML(state.items.get(id), canSort ? { position: index + 1, total: ids.length } : null);
       if (state.failures.has(id)) return failedRowHTML(id, state.failures.get(id));
       return skeletonRowHTML();
     })
     .join(""));
-  if (listChanged && focusKey) el.list.querySelector(focusKey)?.focus();
+  if (listChanged) {
+    // Rows that are new slide in; rows already seen (including after a reorder) do not replay.
+    revealCards(el.list, state.seenRows, { item: ".title-row", id: (row) => row.dataset.id, scroll: false });
+    // Dragging is rebuilt for the rows now on the page.
+    state.stopSorting();
+    state.stopSorting = canSort ? makeSortable(el.list, commitMove) : () => {};
+    if (focusKey) el.list.querySelector(focusKey)?.focus();
+  }
   el.list.setAttribute("aria-busy", String(state.pending.size > 0));
   el.addMore.hidden = isEmpty;
   setHTML(el.empty, isEmpty
@@ -358,15 +376,29 @@ el.list.addEventListener("click", (event) => {
   const remove = event.target.closest("[data-remove]");
   if (remove) {
     const id = Number(remove.dataset.remove);
+    const row = remove.closest(".title-row");
+    if (row.dataset.leaving) return; // already on its way out
+    row.dataset.leaving = "1";
     state.focusIndex = [...el.list.querySelectorAll("[data-remove]")].indexOf(remove);
     const item = state.items.get(id);
-    if (item) {
-      if (!togglePlan(item).ok) state.focusIndex = null;
-    } else {
-      const result = removeFromDraft(id);
-      if (!result.ok) state.focusIndex = null;
-      else showToast("Removed from your plan", { tone: "removed", action: { label: "Undo", onClick: () => addToDraft(id, { index: result.index }) } });
-    }
+
+    // The row eases out first, then the title is really removed.
+    exitItems([row], () => {
+      state.seenRows.delete(String(id)); // so Undo brings the row back with the entrance animation
+      if (item) {
+        if (!togglePlan(item).ok) state.focusIndex = null;
+      } else {
+        const result = removeFromDraft(id);
+        if (!result.ok) state.focusIndex = null;
+        else showToast("Removed from your plan", { tone: "removed", action: { label: "Undo", onClick: () => addToDraft(id, { index: result.index }) } });
+      }
+      if (row.isConnected) {
+        // Nothing was removed (storage blocked): bring the row back.
+        delete row.dataset.leaving;
+        render();
+        state.seenRows.add(String(id));
+      }
+    }, { x: 24, y: 0 });
     return;
   }
 
@@ -374,6 +406,44 @@ el.list.addEventListener("click", (event) => {
   if (retry) {
     fetchTitle(Number(retry.dataset.retry));
   }
+});
+
+/* ---------- Reordering: by dragging a handle, or with the arrow keys ---------- */
+
+function announceMove(id, result) {
+  const item = state.items.get(id);
+  el.reorderAnnounce.textContent = item && result.moved ? `Moved ${item.title} to position ${result.to + 1} of ${getDraft().titleIds.length}.` : "";
+}
+
+/** Called when a drag ends in a new position. */
+function commitMove(idText, toIndex) {
+  const id = Number(idText);
+  const result = moveInDraft(id, toIndex);
+  if (!result.ok) {
+    el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't change the order. Storage may be blocked." });
+    return;
+  }
+  announceMove(id, result);
+}
+
+el.list.addEventListener("keydown", (event) => {
+  const handle = event.target.closest("[data-handle]");
+  if (!handle) return;
+  const keys = { ArrowUp: -1, ArrowDown: 1, Home: -Infinity, End: Infinity };
+  if (!(event.key in keys)) return;
+  event.preventDefault();
+
+  const id = Number(handle.dataset.handle);
+  const ids = getDraft().titleIds;
+  const from = ids.indexOf(id);
+  const step = keys[event.key];
+  const to = Number.isFinite(step) ? from + step : step < 0 ? 0 : ids.length - 1;
+  const result = moveInDraft(id, to);
+  if (!result.ok) {
+    el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't change the order. Storage may be blocked." });
+    return;
+  }
+  announceMove(id, result); // the list redraws and focus returns to this title's handle
 });
 
 el.scheduleToggle.addEventListener("click", () => {
@@ -412,11 +482,16 @@ el.save.addEventListener("click", () => {
 
 el.clear.addEventListener("click", () => {
   state.focusIndex = 0; // lands on the heading once the list is empty
-  const result = clearPlan();
-  if (!result.ok) {
-    state.focusIndex = null;
-    el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't clear the plan. Storage may be blocked." });
-  }
+  const rows = el.list.querySelectorAll(".title-row");
+  exitItems(rows, () => {
+    state.seenRows.clear();
+    const result = clearPlan();
+    if (!result.ok) {
+      state.focusIndex = null;
+      render();
+      el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't clear the plan. Storage may be blocked." });
+    }
+  }, { x: 24, y: 0 });
 });
 
 // Any change to the plan (here, on another page, or in another tab) refreshes the page.

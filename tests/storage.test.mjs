@@ -214,3 +214,43 @@ test("clearing the plan keeps the evenings and hours, and its ids can be restore
   storage.saveDraft({ ...storage.getDraft(), titleIds: before });
   assert.deepEqual(storage.getDraft().titleIds, [4, 5, 6]);
 });
+
+test("moveInDraft reorders the plan and reports what happened", () => {
+  for (const id of [1, 2, 3, 4]) storage.addToDraft(id);
+  let r = storage.moveInDraft(3, 0);
+  assert.deepEqual([r.ok, r.moved, r.from, r.to], [true, true, 2, 0]);
+  assert.deepEqual(storage.getDraft().titleIds, [3, 1, 2, 4]);
+  r = storage.moveInDraft("4", 1);
+  assert.deepEqual(storage.getDraft().titleIds, [3, 4, 1, 2]);
+  assert.equal(r.moved, true);
+});
+
+test("moveInDraft ignores no-op, unknown and out-of-range moves safely", () => {
+  for (const id of [1, 2, 3]) storage.addToDraft(id);
+  assert.equal(storage.moveInDraft(2, 1).moved, false, "already there");
+  assert.equal(storage.moveInDraft(99, 0).moved, false, "not in the plan");
+  assert.deepEqual(storage.moveInDraft(1, 99).to, 2, "clamped to the end");
+  assert.deepEqual(storage.getDraft().titleIds, [2, 3, 1]);
+  storage.moveInDraft(1, -5);
+  assert.deepEqual(storage.getDraft().titleIds, [1, 2, 3], "clamped to the start");
+  assert.equal(storage.moveInDraft(1, NaN).moved, false);
+});
+
+test("reordering keeps the evenings and hours, and makes a saved plan unsaved", () => {
+  storage.saveDraft({ titleIds: [1, 2, 3], days: [2, 4], hoursPerEvening: 3 });
+  storage.savePlan("Order matters");
+  assert.equal(storage.findSavedPlan().name, "Order matters");
+  storage.moveInDraft(3, 0);
+  assert.deepEqual(storage.getDraft(), { titleIds: [3, 1, 2], days: [2, 4], hoursPerEvening: 3 });
+  assert.equal(storage.findSavedPlan(), null, "a different order is a different plan");
+  storage.moveInDraft(3, 2);
+  assert.equal(storage.findSavedPlan().name, "Order matters", "moving it back makes it saved again");
+});
+
+test("reordering fails safely when storage is blocked", () => {
+  for (const id of [1, 2]) storage.addToDraft(id);
+  window.localStorage.setItem = () => { throw new Error("blocked"); };
+  const r = storage.moveInDraft(2, 0);
+  assert.equal(r.ok, false);
+  assert.equal(r.moved, false);
+});

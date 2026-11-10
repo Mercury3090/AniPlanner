@@ -34,12 +34,6 @@ python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-Run the unit tests (Node 18 or later):
-
-```bash
-npm test
-```
-
 ## Project structure
 
 ```
@@ -65,7 +59,6 @@ js/
   saved-model.js    Turns a saved plan into the numbers shown on its card (pure functions)
   pages/            One controller per page (home.js, discover.js, anime.js, planner.js, saved.js)
 assets/             Favicon and images
-tests/              Unit tests for the maths and the API client
 ```
 
 ## How the API is used

@@ -1,361 +1,192 @@
-//Anime detail page. Loads one title by ?id=, shows the runtime strip, synopsis, trailer, genres and related titles, and handles loading, error and not-found states.
+//Saved plans page. Reads plans from localStorage (no API calls), shows a card for each one, and lets the user open, delete (with Undo) or start a new plan.
 
-import { api, describeError } from "../api.js";
-import { getDraft, isInDraft, onChange } from "../storage.js";
-import { debounce, escapeHtml } from "../utils.js";
-import { countUp, crossfade, revealDetail, revealOnScroll } from "../animations.js";
+import { clearDraft, deletePlan, getDraft, hasUnsavedDraft, listPlans, loadPlanIntoDraft, onChange, restorePlan, storageAvailable } from "../storage.js";
+import { describePlan } from "../saved-model.js";
+import { escapeHtml, plural } from "../utils.js";
 import { icon } from "../icons.js";
-import { togglePlan } from "../plan-actions.js";
-import { describeRuntime, isSafeTrailerUrl, parseAnimeId, truncate } from "../detail.js";
-import { runtimeOf } from "../planner-core.js";
-import { addButtonHTML, attachImageFallback, bannerHTML, emptyStateHTML, placeholderHTML, setAddButtonState, statusBadgeHTML } from "../ui.js";
-
-const DEFAULT_TITLE = document.title;
-const DEFAULT_DESCRIPTION = document.querySelector('meta[name="description"]')?.content ?? "";
+import { showToast } from "../layout.js";
+import { attachImageFallback, bannerHTML, emptyStateHTML } from "../ui.js";
+import { exitItems, revealCards } from "../animations.js";
 
 const el = {
-  back: document.getElementById("back-link"),
+  heading: document.getElementById("saved-heading"),
   banners: document.getElementById("banner-region"),
-  detail: document.getElementById("detail"),
+  plans: document.getElementById("plans"),
   empty: document.getElementById("empty-region"),
+  newPlan: document.getElementById("new-plan"),
+  dialog: document.getElementById("new-plan-dialog"),
+  dialogText: document.getElementById("dialog-text"),
 };
 
-const state = { id: null, item: null, controller: null, relatedController: null, synopsisExpanded: false };
-
-/*--- Back link: return to Discover with the filters the user had ---*/
-
-//Back goes to Discover with the same filters if you came from there
-function setBackLink() {
-  try {
-    const ref = new URL(document.referrer);
-    if (ref.origin === window.location.origin && ref.pathname.endsWith("/discover.html")) {
-      el.back.href = ref.href;
-    }
-  } catch {
-    //No usable referrer: the link keeps its default of discover.html.
-  }
-}
-
-/*--- Loading, error and not-found states ---*/
-
-//fake loading version of the page while the anime loads
-function showSkeleton() {
-  el.detail.innerHTML = `
-    <div class="detail__hero" aria-hidden="true">
-      <span class="skeleton skeleton--poster detail__poster"></span>
-      <div class="detail__summary">
-        <span class="skeleton" style="height:2.5rem;width:70%"></span>
-        <span class="skeleton skeleton--line" style="width:35%"></span>
-        <span class="skeleton" style="height:6rem"></span>
-        <span class="skeleton" style="height:3rem;width:10rem;border-radius:var(--radius-control)"></span>
-      </div>
-    </div>`;
-  el.detail.setAttribute("aria-busy", "true");
-}
-
-//shows the not-found message
-function showNotFound() {
-  el.detail.innerHTML = "";
-  el.detail.removeAttribute("aria-busy");
-  document.title = `Anime not found | ${DEFAULT_TITLE.split("|").pop().trim()}`;
-  el.empty.innerHTML = emptyStateHTML({
-    iconName: "search",
-    title: "We couldn't find that anime",
-    text: "The link may be wrong, or the title may have been removed.",
-    actionLabel: "Back to Discover",
-    href: "discover.html",
-    headingLevel: 1,
-  });
-}
-
-//error banner with a Retry button
-function showError(error) {
-  el.detail.innerHTML = "";
-  el.detail.removeAttribute("aria-busy");
-  el.banners.innerHTML = bannerHTML({ tone: "error", message: describeError(error), actionLabel: "Retry", action: "retry" });
-}
+let focusIndex = null;
+const seen = new Set();     //plan ids whose card has already animated in
 
 /*--- Rendering ---*/
 
-// score badge, or 'No score yet' if there isn't one
-function scoreBadgeHTML(item) {
-  return item.score == null
-    ? `<span class="badge">No score yet</span>`
-    : `<span class="badge">${icon("star")}<span class="visually-hidden">Score </span>${item.score.toFixed(2)}</span>`;
+//mini poster
+function posterHTML(title) {
+  return `<span class="plan-card__poster"><img src="${escapeHtml(title.image)}" alt="" width="48" height="72" loading="lazy" decoding="async"></span>`;
 }
 
-//the runtime section: episodes, minutes, total and evenings needed
-function runtimeHTML(item) {
-  const hours = getDraft().hoursPerEvening;
-  const { stats, note } = describeRuntime(item, hours);
-  const counted = runtimeOf(item);
-  const rows = stats
-    .map((s) => {
-      const total = s.key === "total" && counted.counted;
-      const count = total ? ` data-count="minutes" data-to="${counted.minutes}" data-prefix="${counted.estimated ? "About " : ""}"` : "";
-      return `<div class="runtime-strip__item${s.highlight ? " runtime-strip__item--total" : ""}"><dt>${escapeHtml(s.label)}</dt><dd${count}>${escapeHtml(s.value)}</dd></div>`;
-    })
+//one stat on a plan card
+function statHTML(label, value) {
+  return `<div class="plan-card__stat"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`;
+}
+
+//a saved plan card
+function planCardHTML(plan) {
+  const d = describePlan(plan);
+  const name = escapeHtml(plan.name);
+  const posters = (plan.snapshot?.titles ?? [])
+    .filter((t) => t.image)
+    .slice(0, 3)
+    .map(posterHTML)
     .join("");
-  const noteHTML = note ? `<p class="runtime-note">${icon("alert")}<span>${escapeHtml(note)}</span></p>` : "";
-  return `<dl class="runtime-strip">${rows}</dl>${noteHTML}`;
-}
 
-//trailer section, YouTube links only
-function trailerHTML(item) {
-  if (!item.trailerEmbedUrl || !isSafeTrailerUrl(item.trailerEmbedUrl)) return "";
-  return `
-    <section class="detail__section" aria-labelledby="trailer-heading">
-      <h2 id="trailer-heading">Trailer</h2>
-      <div id="trailer-slot">
-        <button type="button" class="trailer" id="trailer-play" aria-label="Play trailer for ${escapeHtml(item.title)}">
-          ${icon("play")}<span>Play trailer</span>
-        </button>
-      </div>
-    </section>`;
-}
+  const stats = [statHTML("Titles", String(d.titleCount))];
+  if (d.total) stats.push(statHTML("Total runtime", d.total));
+  if (d.finish) stats.push(statHTML("Finish date", d.finish));
+  else if (d.total) stats.push(statHTML("Finish date", "Not available yet"));
 
-//genre tags
-function genresHTML(item) {
-  if (!item.genres.length) return "";
-  const tags = item.genres.map((g) => `<li class="tag">${escapeHtml(g.name)}</li>`).join("");
-  return `
-    <section class="detail__section" aria-labelledby="genres-heading">
-      <h2 id="genres-heading">Genres</h2>
-      <ul class="tag-list">${tags}</ul>
-    </section>`;
-}
+  const notes = d.notes.map((n) => `<p class="plan-card__note">${escapeHtml(n)}</p>`).join("");
+  const savedOn = d.saved ? `Saved ${d.saved} · ` : "";
 
-//draws the whole page, then starts the animation
-function renderItem(item) {
-  state.item = item;
-  state.synopsisExpanded = false;
-  const markup = `
-    <header class="detail__hero">
-      <div class="detail__poster">${
-        item.image
-          ? `<img src="${escapeHtml(item.image)}" alt="Poster for ${escapeHtml(item.title)}" width="300" height="450" decoding="async">`
-          : placeholderHTML()
-      }</div>
-      <div class="detail__summary">
-        <h1 class="detail__title">${escapeHtml(item.title)}</h1>
-        <div class="cluster">
-          ${statusBadgeHTML(item)}${scoreBadgeHTML(item)}
-          ${item.type || item.year ? `<span class="caption">${escapeHtml([item.type, item.year].filter(Boolean).join(" · "))}</span>` : ""}
-        </div>
-        <section aria-labelledby="runtime-heading">
-          <h2 id="runtime-heading" class="visually-hidden">Watch time</h2>
-          <div id="runtime">${runtimeHTML(item)}</div>
-        </section>
-        <div class="detail__actions">${addButtonHTML(item, isInDraft(item.id), { large: true })}</div>
-      </div>
-    </header>
-
-    <section class="detail__section" aria-labelledby="synopsis-heading">
-      <h2 id="synopsis-heading">Synopsis</h2>
-      <p id="synopsis" class="synopsis synopsis--clamped">${escapeHtml(item.synopsis || "No synopsis available.")}</p>
-      <button type="button" id="synopsis-toggle" class="btn btn--text" aria-expanded="false" aria-controls="synopsis" hidden>Read more</button>
-    </section>
-
-    ${trailerHTML(item)}
-    ${genresHTML(item)}
-
-    <section id="related" class="detail__section" aria-labelledby="related-heading" hidden>
-      <h2 id="related-heading">Related titles</h2>
-      <div id="related-body"></div>
-    </section>`;
-
-  //The skeleton fades out while the page arrives (poster, title, runtime strip, button), and the total runtime counts up as the strip appears.
-  crossfade(
-    el.detail,
-    () => {
-      el.detail.innerHTML = markup;
-    },
-    { fadeContent: false }
-  );
-  revealDetail(el.detail);
-  const total = el.detail.querySelector("[data-count]");
-  if (total) countUp(total, 0, Number(total.dataset.to), "minutes", { prefix: total.dataset.prefix ?? "" }, 0.45);
-  el.detail.removeAttribute("aria-busy");
-  document.title = `${item.title} | AniPlanner`;
-  const description = document.querySelector('meta[name="description"]');
-  if (description) description.content = item.synopsis ? truncate(item.synopsis) : DEFAULT_DESCRIPTION;
-
-  updateSynopsisToggle();
-  loadRelated(item.id);
-}
-
-//Shows Read more only when the synopsis is actually cut off.
-function updateSynopsisToggle() {
-  const text = document.getElementById("synopsis");
-  const toggle = document.getElementById("synopsis-toggle");
-  if (!text || !toggle) return;
-  if (state.synopsisExpanded) {
-    toggle.hidden = false;
-    return;
-  }
-  toggle.hidden = text.scrollHeight <= text.clientHeight + 1;
-}
-
-/*--- Related titles ---*/
-
-//one card in Related
-function relatedCardHTML(item) {
-  const title = escapeHtml(item.title);
-  const media = item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="200" height="300" loading="lazy" decoding="async">` : placeholderHTML();
   return `
     <li>
-      <a class="related-card" href="anime.html?id=${item.id}">
-        <span class="related-card__media">${media}</span>
-        <span class="related-card__title">${title}</span>
-      </a>
+      <article class="plan-card" data-id="${escapeHtml(plan.id)}">
+        <h2 class="plan-card__title">${name}</h2>
+        ${posters ? `<div class="plan-card__posters">${posters}</div>` : ""}
+        <dl class="plan-card__stats">${stats.join("")}</dl>
+        ${notes}
+        <p class="plan-card__meta">${escapeHtml(savedOn)}${escapeHtml(d.days)} · ${escapeHtml(d.hoursLabel)}</p>
+        <div class="plan-card__actions">
+          <button type="button" class="btn btn--primary btn--small" data-open-plan="${escapeHtml(plan.id)}" aria-label="Open ${name}">Open</button>
+          <button type="button" class="btn btn--quiet btn--small" data-delete="${escapeHtml(plan.id)}" aria-label="Delete ${name}">${icon("trash")}Delete</button>
+        </div>
+      </article>
     </li>`;
 }
 
-//fake loading cards for Related
-function relatedSkeletonHTML() {
-  const tile = `<li aria-hidden="true"><span class="related-card"><span class="skeleton skeleton--poster"></span><span class="skeleton skeleton--line" style="width:70%"></span></span></li>`;
-  return `<ul class="related-grid">${tile.repeat(4)}</ul>`;
+//the Create a plan card
+function newPlanCardHTML() {
+  return `<li><button type="button" class="plan-card plan-card--new" data-new>${icon("plus")}<span>Create a plan</span></button></li>`;
 }
 
-//Related loads last so a failure here doesn't break the page
-async function loadRelated(id) {
-  const section = document.getElementById("related");
-  const body = document.getElementById("related-body");
-  if (!section || !body) return;
+//draw the saved plans, or the empty state
+function render() {
+  const plans = listPlans();
+  el.plans.innerHTML = plans.length ? plans.map(planCardHTML).join("") + newPlanCardHTML() : "";
+  el.empty.innerHTML = plans.length
+    ? ""
+    : emptyStateHTML({
+        iconName: "bookmark",
+        title: "No saved plans yet",
+        text: "Pick a few titles and save your first plan.",
+        actionLabel: "Find anime",
+        href: "discover.html",
+      });
 
-  state.relatedController?.abort();
-  const controller = new AbortController();
-  state.relatedController = controller;
+  revealCards(el.plans, seen, {
+    item: ".plan-grid > li",
+    id: (li) => li.querySelector("[data-id]")?.dataset.id ?? (li.querySelector("[data-new]") ? "new" : null),
+  });
 
-  section.hidden = false;
-  body.innerHTML = relatedSkeletonHTML();
-  body.setAttribute("aria-busy", "true");
-
-  try {
-    const items = await api.getRecommendations(id, { limit: 4, signal: controller.signal });
-    if (controller.signal.aborted) return;
-    if (items.length === 0) {
-      section.hidden = true;
-      return;
-    }
-    body.innerHTML = `<ul class="related-grid">${items.map(relatedCardHTML).join("")}</ul>`;
-    revealOnScroll(body.querySelectorAll(".related-grid > li"));
-  } catch (error) {
-    if (error.kind === "aborted") return;
-    body.innerHTML = bannerHTML({
-      tone: "error",
-      message: "We couldn't load related titles. The rest of the page still works.",
-      actionLabel: "Try again",
-      action: "retry-related",
-    });
-  } finally {
-    body.removeAttribute("aria-busy");
+  if (focusIndex !== null) {
+    const buttons = el.plans.querySelectorAll("[data-delete]");
+    (buttons[Math.min(focusIndex, buttons.length - 1)] ?? el.heading).focus();
+    focusIndex = null;
   }
 }
 
-/*--- Main load ---*/
+/*--- Starting a new plan ---*/
 
-//loads the anime and handles loading, error and not found
-async function load() {
-  state.controller?.abort();
-  state.relatedController?.abort();
-  const controller = new AbortController();
-  state.controller = controller;
+//clear the plan and open the Planner
+function goToNewPlan() {
+  clearDraft();
+  window.location.href = "planner.html";
+}
 
-  el.banners.innerHTML = "";
-  el.empty.innerHTML = "";
-
-  state.id = parseAnimeId(window.location.search);
-  if (state.id === null) {
-    showNotFound();
+//new plan: asks first if the current one isn't saved
+function startNewPlan() {
+  //Only ask when the current plan would be lost: it has titles and matches no saved plan.
+  if (!hasUnsavedDraft()) {
+    goToNewPlan();
     return;
   }
-
-  showSkeleton();
-  try {
-    const item = await api.getAnimeFull(state.id, { signal: controller.signal });
-    if (controller.signal.aborted) return;
-    if (!item) {
-      showNotFound();
-      return;
-    }
-    renderItem(item);
-  } catch (error) {
-    if (error.kind === "aborted") return;
-    if (error.kind === "not-found") showNotFound();
-    else showError(error);
+  const count = getDraft().titleIds.length;
+  if (typeof el.dialog.showModal !== "function") {
+    if (window.confirm(`Your current plan (${plural(count, "title")}) hasn't been saved. Start a new plan anyway?`)) goToNewPlan();
+    return;
   }
+  el.dialogText.textContent = `Your current plan has ${plural(count, "title")} and hasn't been saved. Starting a new plan will clear it.`;
+  el.dialog.returnValue = "";
+  el.dialog.showModal();
 }
+
+el.newPlan.addEventListener("click", startNewPlan);
+el.dialog.addEventListener("close", () => {
+  if (el.dialog.returnValue === "confirm") goToNewPlan();
+});
+//Clicking the dark area outside the dialog closes it, like Escape.
+el.dialog.addEventListener("click", (event) => {
+  if (event.target === el.dialog) el.dialog.close("cancel");
+});
 
 /*--- Events ---*/
 
-el.banners.addEventListener("click", (event) => {
-  if (event.target.closest('[data-action="retry"]')) load();
-});
-
-el.empty.addEventListener("click", (event) => {
-  if (event.target.closest('[data-action="retry"]')) load();
-});
-
-el.detail.addEventListener("click", (event) => {
-  const target = event.target;
-
-  const add = target.closest("[data-add]");
-  if (add && state.item) {
-    const result = togglePlan(state.item);
-    if (!result.ok) {
-      el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't save your plan. Storage may be full or blocked." });
-    }
+el.plans.addEventListener("click", (event) => {
+  if (event.target.closest("[data-new]")) {
+    startNewPlan();
     return;
   }
 
-  if (target.closest("#synopsis-toggle")) {
-    const text = document.getElementById("synopsis");
-    const toggle = document.getElementById("synopsis-toggle");
-    state.synopsisExpanded = !state.synopsisExpanded;
-    text.classList.toggle("synopsis--clamped", !state.synopsisExpanded);
-    toggle.setAttribute("aria-expanded", String(state.synopsisExpanded));
-    toggle.textContent = state.synopsisExpanded ? "Read less" : "Read more";
+  const open = event.target.closest("[data-open-plan]");
+  if (open) {
+    const result = loadPlanIntoDraft(open.dataset.openPlan);
+    if (result.ok) window.location.href = "planner.html";
+    else el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't open that plan. Storage may be blocked." });
     return;
   }
 
-  if (target.closest("#trailer-play") && state.item) {
-    //Only build the player when asked, so the page loads quickly.
-    const slot = document.getElementById("trailer-slot");
-    const iframe = document.createElement("iframe");
-    iframe.className = "trailer trailer--playing";
-    iframe.src = state.item.trailerEmbedUrl;
-    iframe.title = `Trailer for ${state.item.title}`;
-    iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
-    iframe.setAttribute("allowfullscreen", "");
-    iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
-    slot.replaceChildren(iframe);
-    iframe.focus();
-    return;
-  }
+  const remove = event.target.closest("[data-delete]");
+  if (remove) {
+    const card = remove.closest(".plan-card");
+    if (card.dataset.leaving) return;      //already on its way out
+    card.dataset.leaving = "1";
+    const id = remove.dataset.delete;
+    focusIndex = [...el.plans.querySelectorAll("[data-delete]")].indexOf(remove);
 
-  if (target.closest('[data-action="retry-related"]') && state.item) {
-    loadRelated(state.item.id);
+    //The card eases out first, then the plan is really deleted.
+    exitItems([card], () => {
+      const result = deletePlan(id);
+      if (!result.ok || !result.removed) {
+        focusIndex = null;
+        delete card.dataset.leaving;
+        el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't delete that plan. Storage may be blocked." });
+        render();
+        return;
+      }
+      seen.delete(id);          //so Undo brings the card back with the entrance animation
+      const { removed } = result;
+      showToast(`Deleted "${removed.name}"`, {
+        tone: "removed",
+        duration: 5000,
+        action: { label: "Undo", onClick: () => restorePlan(removed) },
+      });
+    });
   }
 });
 
-//Keep the Add button and the evenings figure in step with the plan.
-onChange(() => {
-  if (!state.item) return;
-  const button = el.detail.querySelector("[data-add]");
-  if (button) {
-    const inPlan = isInDraft(state.item.id);
-    if (String(inPlan) !== button.dataset.inPlan) setAddButtonState(button, state.item, inPlan);
-  }
-  const runtime = document.getElementById("runtime");
-  if (runtime) runtime.innerHTML = runtimeHTML(state.item);
-});
+//Changes from this page, or from another tab, refresh the list.
+onChange(render);
+attachImageFallback(el.plans);
 
-//Fonts and window size can change how the synopsis wraps.
-const recheckSynopsis = debounce(updateSynopsisToggle, 150);
-window.addEventListener("resize", recheckSynopsis);
-document.fonts?.ready.then(updateSynopsisToggle);
+/*--- Start --- */
 
-attachImageFallback(el.detail);
-setBackLink();
-load();
+if (!storageAvailable()) {
+  el.banners.innerHTML = bannerHTML({
+    tone: "warning",
+    message: "Your browser is blocking storage, so saved plans can't be shown or kept.",
+  });
+}
+render();

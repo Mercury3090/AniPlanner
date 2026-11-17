@@ -1,10 +1,10 @@
-// Turns a saved plan into the text shown on its card. Pure functions, no DOM.
-// The finish date is recalculated from today every time, so it never goes stale.
+//Turns a saved plan into the text shown on its card. Pure functions, no DOM.
+//The finish date is recalculated from today every time, so it never goes stale.
 
 import { WEEK, buildSchedule, finishDateOf, formatHours } from "./planner-core.js";
 import { formatDate, formatMinutes, plural } from "./utils.js";
 
-/** "Mon, Wed, Fri", "Every day", or a fallback. Always listed Monday to Sunday. */
+//days as text: Mon, Wed, Fri or Every day (always Monday to Sunday)
 export function describeDays(days) {
   const chosen = new Set(Array.isArray(days) ? days : []);
   const picked = WEEK.filter((d) => chosen.has(d.day));
@@ -12,10 +12,7 @@ export function describeDays(days) {
   return picked.length ? picked.map((d) => d.label).join(", ") : "No evenings chosen";
 }
 
-/**
- * @param {{titleIds?: number[], days?: number[], hoursPerEvening?: number, createdAt?: string, snapshot?: object | null}} plan
- * @param {Date} [today]
- */
+//turns a saved plan into the text for its card
 export function describePlan(plan, today = new Date()) {
   const snapshot = plan.snapshot ?? null;
   const titleCount = Array.isArray(plan.titleIds) ? plan.titleIds.length : 0;
@@ -34,7 +31,7 @@ export function describePlan(plan, today = new Date()) {
     notes: [],
   };
 
-  // Plans saved before snapshots existed have no totals to show.
+  //Plans saved before snapshots existed have no totals to show.
   if (!snapshot) {
     result.notes.push("Open this plan to see its runtime.");
     return result;

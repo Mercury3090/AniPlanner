@@ -1,6 +1,6 @@
-// Small outline icon set (24px grid, 2px stroke). Inline SVG keeps icons fast,
-// themeable with currentColor, and free of any extra network request.
+//Small outline icon set (24px grid, 2px stroke). Inline SVG keeps icons fast, themeable with currentColor, and free of any extra network request.
 
+//the SVG shapes for each icon
 const PATHS = {
   search: '<circle cx="10" cy="10" r="7"/><path d="M21 21l-6 -6"/>',
   plus: '<path d="M12 5l0 14"/><path d="M5 12l14 0"/>',
@@ -34,12 +34,7 @@ const PATHS = {
   grip: '<circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>',
 };
 
-/**
- * Returns an inline SVG string. Icons are decorative by default and hidden from
- * assistive tech; pass a label for icon-only meaning.
- * @param {string} name
- * @param {{label?: string, className?: string}} [opts]
- */
+//returns an inline SVG for the icon name. Hidden from screen readers unless you pass a label
 export function icon(name, { label = "", className = "" } = {}) {
   const body = PATHS[name];
   if (!body) return "";

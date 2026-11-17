@@ -1,11 +1,7 @@
-// Pure helpers with no DOM access, so they can be unit tested in Node.
+//small helpers used everywhere. no DOM in here, just input -> output.
 
-/**
- * Parses Jikan duration text into whole minutes.
- * "24 min per ep" -> 24, "1 hr 55 min" -> 115, "1 hr" -> 60, "Unknown" -> null.
- * @param {string | null | undefined} text
- * @returns {number | null}
- */
+//turn the API's duration text into minutes.
+//"24 min per ep" -> 24, "1 hr 55 min" -> 115, "1 hr" -> 60, "Unknown" -> null
 export function parseDuration(text) {
   if (typeof text !== "string") return null;
   const value = text.toLowerCase();
@@ -19,10 +15,7 @@ export function parseDuration(text) {
   return total > 0 ? total : null;
 }
 
-/**
- * Formats minutes as "10h 24m", "2h 00m" or "45m".
- * @param {number} totalMinutes
- */
+//minutes -> "10h 24m", "2h 00m" or "45m"
 export function formatMinutes(totalMinutes) {
   const total = Math.max(0, Math.round(totalMinutes));
   const h = Math.floor(total / 60);
@@ -31,29 +24,26 @@ export function formatMinutes(totalMinutes) {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
-/**
- * Formats a date as "Fri 6 Nov".
- * @param {Date} date
- */
+//date -> "Fri 6 Nov"
 export function formatDate(date) {
   return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short" })
     .format(date)
     .replace(",", "");
 }
 
-/** @param {number} count @param {string} one @param {string} [many] */
+//"1 title" or "3 titles"
 export function plural(count, one, many = `${one}s`) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-/** Returns a copy of the date at local midnight. */
+//copy of the date at midnight (so day counting works)
 export function startOfDay(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-/** Escapes text for safe insertion into HTML strings. */
+//make text safe to put in HTML (turns < > & " ' into codes so API text can't add HTML)
 export function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -63,9 +53,10 @@ export function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
-/** Debounce with a cancel handle. */
+//only run fn after calls stop for `wait` ms (used for search typing). .cancel() stops it
 export function debounce(fn, wait = 400) {
   let timer;
+  //waits for typing to pause before running
   const debounced = (...args) => {
     clearTimeout(timer);
     timer = setTimeout(() => fn(...args), wait);

@@ -1,19 +1,16 @@
-// Anime API client.
-//
-// The public Jikan API (api.jikan.moe) closed on 1 October 2026. Tenrai is a free,
-// keyless mirror that serves the same Jikan v4 JSON, so only the address below
-// changes. The public limit is about 3 requests per second and 60 per minute, so
-// every call goes through one queue that starts requests at least 400 ms apart. Responses are
-// cached in sessionStorage for 10 minutes, identical in-flight requests are
-// shared, and a 429 or server error is retried once before it is reported.
-// Every response is converted into one consistent internal shape (see
-// normalizeAnime), so the UI never touches raw API fields.
+//anime API client. every request goes through here.
+
+//the public Jikan API closed on 1 October 2026, so this uses Tenrai, a free mirror with the same Jikan v4 data. only the address below changed.
+//the API allows about 3 requests a second and 60 a minute. the queue starts requests
+//at least 400 ms apart, which keeps under 3 a second (the 60 a minute isn't enforced, the cache and retry cover normal use).
+//answers are cached for 10 minutes, the same request at the same time only goes out once, and a 429 or server error gets one retry.
+//normalizeAnime turns every response into the same shape so the pages never use raw API fields.
 
 import { parseDuration } from "./utils.js";
 
 export const BASE_URL = "https://api.tenrai.org/v1";
 
-/** kind is one of: "rate-limit" | "not-found" | "network" | "server" | "aborted" */
+//kind is one of: "rate-limit" | "not-found" | "network" | "server" | "aborted" 
 export class ApiError extends Error {
   constructor(kind, message, status = 0) {
     super(message);
@@ -23,10 +20,12 @@ export class ApiError extends Error {
   }
 }
 
+//error for a cancelled request
 function abortError() {
   return new ApiError("aborted", "Request cancelled");
 }
 
+//I keep answers for 10 minutes so going back to a page doesn't hit the API again (lasts while the tab is open)
 function makeCache(storage, ttlMs, now) {
   const memory = new Map();
   const prefix = "wnp:cache:";
@@ -52,12 +51,13 @@ function makeCache(storage, ttlMs, now) {
       try {
         storage.setItem(prefix + key, JSON.stringify(entry));
       } catch {
-        // Storage full or blocked: the in-memory copy still works.
+        //Storage full or blocked: the in-memory copy still works.
       }
     },
   };
 }
 
+//sessionStorage can be blocked, so this returns null instead of crashing
 function safeSessionStorage() {
   try {
     return typeof sessionStorage !== "undefined" ? sessionStorage : null;
@@ -66,7 +66,7 @@ function safeSessionStorage() {
   }
 }
 
-/** Converts a raw Jikan anime object into the shape used everywhere in the app. */
+//Converts a raw Jikan anime object into the shape used everywhere in the app.
 export function normalizeAnime(raw) {
   if (!raw) return null;
   const images = raw.images ?? {};
@@ -94,6 +94,7 @@ export function normalizeAnime(raw) {
   };
 }
 
+//keep just the page info the pages need
 function normalizePagination(p) {
   return {
     page: p?.current_page ?? 1,
@@ -102,10 +103,7 @@ function normalizePagination(p) {
   };
 }
 
-/**
- * Creates an API client. Every dependency can be replaced, which is how the
- * unit tests run without a network.
- */
+//makes the API client. fetch, the clock, sleep and storage can all be swapped out, which makes it easy to test
 export function createApi({
   fetchImpl = (...args) => fetch(...args),
   baseUrl = BASE_URL,
@@ -121,7 +119,7 @@ export function createApi({
   let chain = Promise.resolve();
   let lastStart = -Infinity;
 
-  // Spaces request starts at least minGapMs apart. Requests may overlap once started.
+  //Spaces request starts at least minGapMs apart. Requests may overlap once started.
   function reserveSlot(signal) {
     const slot = chain.then(async () => {
       if (signal?.aborted) throw abortError();
@@ -134,6 +132,7 @@ export function createApi({
     return slot;
   }
 
+  //put the path and options together, skipping empty ones
   function buildUrl(path, params = {}) {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) {
@@ -144,6 +143,7 @@ export function createApi({
     return `${baseUrl}${path}${query ? `?${query}` : ""}`;
   }
 
+  //one request, and any failure becomes a clear error
   async function fetchOnce(url, signal) {
     let response;
     try {
@@ -162,6 +162,7 @@ export function createApi({
     }
   }
 
+  //try twice (only for errors that might go away), then use old cached data if allowed
   async function load(url, { signal, allowStale }) {
     let lastError;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -184,10 +185,8 @@ export function createApi({
     throw lastError;
   }
 
-  /**
-   * GET a path. Returns { json, stale }. stale is true when old cached data was
-   * returned because the live request failed.
-   */
+  //GET a path. Returns { json, stale }. stale is true when old cached data was returned because the live request failed.
+
   async function request(path, { params, signal, allowStale = false } = {}) {
     const url = buildUrl(path, params);
     const cached = cache.get(url);
@@ -204,18 +203,21 @@ export function createApi({
     return promise;
   }
 
-  /* ---------- Endpoint helpers (see PRD endpoint table) ---------- */
+  /*--- Endpoint helpers (see PRD endpoint table) ---*/
 
+  //popular anime, for the hero posters
   async function getTopAnime({ limit = 3, signal } = {}) {
     const { json, stale } = await request("/top/anime", { params: { limit, sfw: true }, signal, allowStale: true });
     return { items: (json.data ?? []).map(normalizeAnime), pagination: normalizePagination(json.pagination), stale };
   }
 
+  //this season's anime, for Airing now
   async function getSeasonNow({ limit = 4, signal } = {}) {
     const { json, stale } = await request("/seasons/now", { params: { limit, sfw: true }, signal, allowStale: true });
     return { items: (json.data ?? []).map(normalizeAnime), pagination: normalizePagination(json.pagination), stale };
   }
 
+  //search and filters for Discover
   async function searchAnime({ q, genres, type, status, orderBy, sort, page = 1, limit = 24, signal } = {}) {
     const { json, stale } = await request("/anime", {
       params: { q, genres, type, status, order_by: orderBy, sort, page, limit, sfw: true },
@@ -225,21 +227,25 @@ export function createApi({
     return { items: (json.data ?? []).map(normalizeAnime), pagination: normalizePagination(json.pagination), stale };
   }
 
+  //genre list, so moods can be matched to genre IDs
   async function getGenres({ signal } = {}) {
     const { json } = await request("/genres/anime", { signal });
     return (json.data ?? []).map((g) => ({ id: g.mal_id, name: g.name }));
   }
 
+  //one anime with everything, trailer included
   async function getAnimeFull(id, { signal } = {}) {
     const { json } = await request(`/anime/${Number(id)}/full`, { signal });
     return normalizeAnime(json.data);
   }
 
+  //one anime, basics only (the planner uses this)
   async function getAnime(id, { signal } = {}) {
     const { json } = await request(`/anime/${Number(id)}`, { signal });
     return normalizeAnime(json.data);
   }
 
+  //recommended anime for the Related section
   async function getRecommendations(id, { limit = 4, signal } = {}) {
     const { json } = await request(`/anime/${Number(id)}/recommendations`, { signal });
     return (json.data ?? [])
@@ -251,10 +257,10 @@ export function createApi({
   return { request, getTopAnime, getSeasonNow, searchAnime, getGenres, getAnimeFull, getAnime, getRecommendations };
 }
 
-/** Shared client used by the pages. */
+//Shared client used by the pages.
 export const api = createApi();
 
-/** Friendly message for each kind of failure (matches the PRD interface states). */
+//Friendly message for each kind of failure (matches the PRD interface states).
 export function describeError(error) {
   switch (error?.kind) {
     case "rate-limit":

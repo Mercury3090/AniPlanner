@@ -1,26 +1,15 @@
-// Pure helpers for the anime detail page (no DOM), so they can be unit tested.
+//helpers for the anime detail page. no DOM in here, just input -> output.
 
 import { runtimeOf } from "./planner-core.js";
 import { formatMinutes } from "./utils.js";
 
-/**
- * Reads the anime id from a query string such as "?id=1".
- * Anything that is not a plain positive whole number returns null, so a bad URL
- * never reaches the API.
- * @param {string} search
- * @returns {number | null}
- */
+//reads the id from the URL (?id=1). Anything that isn't a plain positive number gives null, so a bad link never reaches the API
 export function parseAnimeId(search) {
   const raw = new URLSearchParams(search).get("id");
   return raw !== null && /^[1-9]\d{0,8}$/.test(raw) ? Number(raw) : null;
 }
 
-/**
- * Builds the numbers shown in the runtime strip.
- * @param {import("./planner-core.js").Title} item
- * @param {number} hoursPerEvening
- * @returns {{kind: "tv" | "movie" | "ongoing", stats: {key: string, label: string, value: string, highlight?: boolean}[], note: string | null}}
- */
+//the numbers for the runtime strip (episodes, minutes, total, evenings needed) plus a note for movies, ongoing and estimated titles
 export function describeRuntime(item, hoursPerEvening) {
   const r = runtimeOf(item);
   const isMovie = String(item.type ?? "").toLowerCase() === "movie";
@@ -70,9 +59,10 @@ export function describeRuntime(item, hoursPerEvening) {
   };
 }
 
+//hosts allowed for trailers
 const TRAILER_HOSTS = new Set(["www.youtube.com", "youtube.com", "www.youtube-nocookie.com", "youtube-nocookie.com"]);
 
-/** Only https YouTube embeds are allowed into an iframe. */
+//only https YouTube links are allowed into the trailer iframe
 export function isSafeTrailerUrl(url) {
   try {
     const parsed = new URL(url);
@@ -82,7 +72,7 @@ export function isSafeTrailerUrl(url) {
   }
 }
 
-/** Collapses whitespace and cuts at a word boundary, for the meta description. */
+//squash spaces and cut at a whole word, for the meta description
 export function truncate(text, max = 155) {
   const clean = String(text ?? "").replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;

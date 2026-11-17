@@ -1,8 +1,6 @@
-// Filter definitions for Discover.
-//
-// Jikan has no "mood" field, so each mood is our own mapping to genre names. The
-// genre IDs are looked up from /genres/anime at runtime, so nothing is hard-coded.
-// Jikan receives the IDs as a comma-separated list.
+//the filters for Discover.
+//the API has no "mood" field, so each mood is my own list of genre names. the genre IDs are looked up from /genres/anime when the page runs, so no IDs are hard-coded.
+//the API takes the IDs as a comma-separated list.
 
 import { runtimeOf } from "./planner-core.js";
 
@@ -13,12 +11,9 @@ export const MOODS = [
   { key: "mind-bending", label: "Mind-bending", genres: ["Mystery", "Sci-Fi"] },
 ];
 
-/**
- * Runtime filter. Ranges are on TOTAL watch time (episodes x minutes), because
- * "short" and "long" mean different things to different people.
- * "movie" is applied by the API (type=movie). The rest are applied after the
- * results arrive, using the same maths as the planner.
- */
+//runtime filter, based on TOTAL watch time (episodes x minutes).
+//"movie" is filtered by the API. the rest are checked after the results come back,
+//using the same maths as the planner
 export const RUNTIME_RANGES = [
   { key: "movie", label: "Movie", server: true },
   { key: "under5", label: "Under 5 hours", min: 0, max: 5 * 60 },
@@ -27,31 +22,30 @@ export const RUNTIME_RANGES = [
   { key: "over30", label: "Over 30 hours", min: 30 * 60, max: Infinity },
 ];
 
+//options for the sort dropdown
 export const SORTS = [
   { key: "popular", label: "Popular", orderBy: "popularity", sort: "asc" },
   { key: "rating", label: "Top rated", orderBy: "score", sort: "desc" },
   { key: "title", label: "A to Z", orderBy: "title", sort: "asc" },
 ];
 
+//find a mood by its key
 export function findMood(key) {
   return MOODS.find((m) => m.key === key) ?? null;
 }
 
+//find a runtime range by its key
 export function findRange(key) {
   return RUNTIME_RANGES.find((r) => r.key === key) ?? null;
 }
 
+//find a sort option by its key (first one if it's not found)
 export function findSort(key) {
   return SORTS.find((s) => s.key === key) ?? SORTS[0];
 }
 
-/**
- * The genres of a mood, found by name in the /genres/anime list, in the order the mood
- * lists them (its main genre first). Names that are not in the list are skipped.
- * @param {string} moodKey
- * @param {{id: number, name: string}[]} genres
- * @returns {{id: number, name: string}[]}
- */
+//turn a mood's genre names into real genres from the API list, main genre first.
+//names the API doesn't have are skipped
 export function resolveMoodGenres(moodKey, genres) {
   const mood = findMood(moodKey);
   if (!mood) return [];
@@ -63,15 +57,13 @@ export function resolveMoodGenres(moodKey, genres) {
   return found;
 }
 
-/** Genre IDs for a mood, main genre first. */
+//just the genre IDs for a mood, main genre first
 export function genreIdsForMood(moodKey, genres) {
   return resolveMoodGenres(moodKey, genres).map((g) => g.id);
 }
 
-/**
- * True when a title falls inside a client-side runtime range.
- * Titles with no known total (still airing) never match a range.
- */
+//true if a title fits the chosen runtime range.
+//titles still airing have no total, so they never match
 export function matchesRuntime(item, rangeKey) {
   const range = findRange(rangeKey);
   if (!range || range.server) return true;

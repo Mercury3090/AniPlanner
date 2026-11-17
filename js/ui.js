@@ -1,5 +1,5 @@
-// Markup builders for the reusable components. Each returns an HTML string, and
-// every piece of API text is escaped before it goes into the page.
+//builds the HTML for the shared parts (cards, buttons, banners, empty states).
+//everything from the API goes through escapeHtml first so it can't inject HTML.
 
 import { icon } from "./icons.js";
 import { illustration, illustrationFor } from "./illustrations.js";
@@ -7,7 +7,7 @@ import { escapeHtml, formatMinutes } from "./utils.js";
 import { runtimeOf } from "./planner-core.js";
 import { popIcon } from "./animations.js";
 
-/** Status badge: always an icon plus text, never colour alone. */
+//Airing / Finished / Upcoming badge. always an icon or dot plus text, never just colour
 export function statusBadgeHTML(item) {
   switch (item.status) {
     case "Currently Airing":
@@ -21,7 +21,7 @@ export function statusBadgeHTML(item) {
   }
 }
 
-/** The two runtime lines shown on a card: the breakdown and the total. */
+//the two runtime lines on a card: episodes x minutes, and the total
 export function runtimeLines(item) {
   const r = runtimeOf(item);
   const isMovie = String(item.type ?? "").toLowerCase() === "movie";
@@ -39,10 +39,7 @@ export function runtimeLines(item) {
   return { meta: `${eps} · ${mins}`, total: `${r.estimated ? "About " : ""}${formatMinutes(r.minutes)}`, counted: true };
 }
 
-/**
- * Add / Added button. The default is the compact full-width size used on cards;
- * pass { large: true } for the normal-size button used on the detail page.
- */
+//Add to plan / Added button. small and full width on cards, large: true for the detail page
 export function addButtonHTML(item, inPlan, { large = false } = {}) {
   const title = escapeHtml(item.title);
   const size = large ? "" : " btn--small btn--block";
@@ -52,7 +49,7 @@ export function addButtonHTML(item, inPlan, { large = false } = {}) {
     : `<button type="button" class="btn btn--primary${size}" ${data} aria-label="Add ${title} to plan">${icon("plus")}Add to plan</button>`;
 }
 
-/** Updates an existing Add button in place (no re-render, so focus is kept). */
+//switch an Add button between Add and Added without replacing it, so focus stays on it
 export function setAddButtonState(button, item, inPlan) {
   const wrapper = document.createElement("div");
   wrapper.innerHTML = addButtonHTML(item, inPlan, { large: button.dataset.large === "true" });
@@ -64,10 +61,7 @@ export function setAddButtonState(button, item, inPlan) {
   popIcon(button);
 }
 
-/**
- * Anime card. The whole card is clickable through the title link, and the Add
- * button sits above it so it keeps its own click target.
- */
+//anime card. the title link stretches over the whole card so you can click anywhere, and the Add button sits on top so it still works on its own
 export function animeCardHTML(item, { inPlan = false, headingLevel = 3 } = {}) {
   const title = escapeHtml(item.title);
   const { meta, total, counted } = runtimeLines(item);
@@ -89,11 +83,12 @@ export function animeCardHTML(item, { inPlan = false, headingLevel = 3 } = {}) {
     </li>`;
 }
 
+//icon for when there's no poster
 export function placeholderHTML() {
   return `<span class="card__placeholder">${icon("image")}<span class="visually-hidden">No poster available</span></span>`;
 }
 
-/** Swaps a broken poster for the placeholder. Attach once to a container. */
+//swap broken posters for the placeholder. true = capture, because image errors don't bubble
 export function attachImageFallback(root) {
   root.addEventListener(
     "error",
@@ -107,6 +102,7 @@ export function attachImageFallback(root) {
   );
 }
 
+//fake loading cards
 export function skeletonCardsHTML(count = 8) {
   const card = `
     <li class="card-grid__item" aria-hidden="true">
@@ -123,11 +119,8 @@ export function skeletonCardsHTML(count = 8) {
   return card.repeat(count);
 }
 
-/**
- * Message banner. Errors use role="alert" so they are announced at once,
- * other tones use role="status".
- * @param {{tone: "error" | "warning" | "success", message: string, actionLabel?: string, action?: string, href?: string}} opts
- */
+//message banner (error, warning or success) with an optional button or link.
+//errors use role="alert" so screen readers say them straight away, the rest use role="status"
 export function bannerHTML({ tone, message, actionLabel, action = "retry", href }) {
   const iconName = tone === "success" ? "circle-check" : tone === "warning" ? "clock" : "alert";
   const role = tone === "error" ? "alert" : "status";
@@ -140,6 +133,7 @@ export function bannerHTML({ tone, message, actionLabel, action = "retry", href 
   return `<div class="banner banner--${tone}" role="${role}">${icon(iconName)}<p class="banner__text">${escapeHtml(message)}</p>${button}</div>`;
 }
 
+//empty-state box: picture, heading, text and an optional button
 export function emptyStateHTML({ iconName = "search", title, text, actionLabel, action = "clear", href, headingLevel = 2 }) {
   const button = actionLabel
     ? href

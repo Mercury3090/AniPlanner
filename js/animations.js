@@ -1,15 +1,9 @@
-// All GSAP animation lives here, so the page scripts only say WHEN something should
-// animate and this file decides HOW.
-//
-// Rules every animation follows:
-//   1. Nothing is ever left hidden. If GSAP did not load, every function does nothing
-//      and the page is already fully visible.
-//   2. If the visitor prefers reduced motion, movement is dropped. Text still appears
-//      (a quick fade for the hero), and nothing slides, scales or counts.
-//   3. Layout is never animated (no width, height, top, left or margin). Motion is transform and
-//      opacity, plus the stroke of the logo's SVG moon, so it stays smooth.
-//
-// GSAP and ScrollTrigger are loaded by <script> tags (js/vendor) and found on window.
+//all the GSAP animation. pages say when to animate, this file says how.
+//rules:
+// - if GSAP doesn't load, nothing animates and the page is just visible
+// - reduced motion = no sliding, scaling or counting
+// - only transform and opacity (plus SVG stroke), never width/height/top etc.
+//GSAP, ScrollTrigger and Draggable come from <script> tags in js/vendor.
 
 import { dropIndex, shiftsFor } from "./planner-core.js";
 import { formatMinutes } from "./utils.js";
@@ -21,26 +15,24 @@ const Drag = win?.Draggable;
 if (g && ST) g.registerPlugin(ST);
 if (g && Drag) g.registerPlugin(Drag);
 
+//check if the visitor turned on reduced motion
 function prefersReducedMotion() {
   return Boolean(win?.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 }
 
-/** True when GSAP is available and the visitor has not asked for reduced motion. */
+//true if GSAP loaded and reduced motion is off
 export function motionAllowed() {
   return Boolean(g) && !prefersReducedMotion();
 }
 
-/** The hero text starts hidden only while GSAP is about to reveal it (see the class on <html>). */
+//un-hide the hero text (it's hidden by the has-motion class until GSAP shows it)
 function endHeroHold() {
   win?.document?.documentElement.classList.remove("has-motion");
 }
 
-/* ---------- 1. Hero reveal (timeline) ---------- */
+/*--- 1. Hero reveal (timeline) ---*/
 
-/**
- * Home page hero: headline, lead, buttons, then the posters rise in one after
- * another. About one second in total.
- */
+//home hero: moon, headline, text, buttons, then posters rise in. about 1.3 seconds
 export function revealHero() {
   const text = [".hero__title", ".hero__lead", ".hero__actions", ".hero__moon"];
   if (!g) {
@@ -53,10 +45,10 @@ export function revealHero() {
     return null;
   }
 
-  // The hand-drawn underline under "watch night" is drawn in with its stroke.
+  //draw in the underline under "watch night"
   const underline = win.document.querySelector(".hero__underline path");
   if (underline) {
-    underline.setAttribute("pathLength", "100"); // 100, not 1: GSAP rounds to whole numbers, so 0 to 1 would just pop
+    underline.setAttribute("pathLength", "100");        //100, not 1: GSAP rounds to whole numbers, so 0 to 1 would just pop
     g.set(underline, { strokeDasharray: "100 1000", strokeDashoffset: 100 }); // a long gap, so the pattern can never wrap round and show a sliver or a dot
   }
 
@@ -74,18 +66,15 @@ export function revealHero() {
   return tl;
 }
 
-/* ---------- 2. Cards and steps rise in as they scroll into view (ScrollTrigger) ---------- */
+/*--- 2. Cards and steps rise in as they scroll into view (ScrollTrigger) ---*/
 
-/**
- * Items fade up and in as they reach the lower part of the screen, in small groups.
- * Items already on screen animate straight away.
- * @param {ArrayLike<Element>} items
- */
+//fade items up as they scroll into view (ones already on screen go straight away)
 export function revealOnScroll(items) {
   const list = Array.from(items ?? []);
   if (!list.length || !motionAllowed()) return;
 
   g.set(list, { opacity: 0, y: 24 });
+  //fade the cards in and lift them up one by one
   const show = (batch) =>
     g.to(batch, { opacity: 1, y: 0, duration: 0.5, stagger: 0.08, ease: "power2.out", overwrite: true, clearProps: "transform" });
 
@@ -93,16 +82,8 @@ export function revealOnScroll(items) {
   else show(list);
 }
 
-/**
- * Animates only the items that have not been seen yet, so loading more (or redrawing
- * a list) never replays the animation for items already on screen.
- *
- * @param {ParentNode} container
- * @param {Set<string>} seen ids already animated; updated in place
- * @param {{item?: string, id?: (el: Element) => string | null | undefined, scroll?: boolean}} [options]
- *   item: selector for the items; id: how to read an item's id (skeletons have none and are skipped);
- *   scroll: reveal as they scroll into view (true) or straight away (false)
- */
+//only animate items we haven't animated before, so Load more doesn't replay old cards.
+//seen = set of ids already done. skeletons have no id so they're skipped.
 export function revealCards(container, seen, { item = ".card-grid__item", id = (el) => el.querySelector("[data-id]")?.dataset.id, scroll = true } = {}) {
   const fresh = [];
   for (const el of container.querySelectorAll(item)) {
@@ -115,20 +96,14 @@ export function revealCards(container, seen, { item = ".card-grid__item", id = (
   else enterItems(fresh);
 }
 
-/** Items slide up and fade in straight away (for lists near the top of a page). */
+//slide in straight away, for lists near the top of the page
 export function enterItems(items) {
   const list = Array.from(items ?? []);
   if (!list.length || !motionAllowed()) return;
   g.fromTo(list, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.06, ease: "power2.out", clearProps: "transform" });
 }
 
-/**
- * Items ease out, then done() runs (that is where the real removal happens).
- * Without motion, done() runs at once.
- * @param {ArrayLike<Element>} items
- * @param {() => void} done
- * @param {{x?: number, y?: number, stagger?: number}} [options]
- */
+//animate items out, then call done() which actually removes them (no motion = done() straight away)
 export function exitItems(items, done, { x = 0, y = -6, stagger = 0.04 } = {}) {
   const list = Array.from(items ?? []);
   if (!list.length || !motionAllowed()) {
@@ -138,15 +113,10 @@ export function exitItems(items, done, { x = 0, y = -6, stagger = 0.04 } = {}) {
   g.to(list, { opacity: 0, x, y, scale: 0.97, duration: 0.25, stagger, ease: "power1.in", onComplete: done });
 }
 
-/* ---------- 3. Skeleton to content (crossfade) ---------- */
+/*--- 3. Skeleton to content (crossfade) ---*/
 
-/**
- * Swaps a skeleton for real content. A copy of the skeleton is laid over the
- * container and fades out while the new content fades in, so nothing jumps.
- * @param {HTMLElement} container
- * @param {() => void} update puts the real content in the container
- * @param {{fadeContent?: boolean}} [options] set fadeContent false when the content animates itself
- */
+//swap fake loading cards for real content without a jump: a copy of the skeleton sits on top and fades out while the real content comes in underneath.
+//fadeContent false = the content has its own animation
 export function crossfade(container, update, { fadeContent = true } = {}) {
   if (!motionAllowed() || !container.querySelector?.(".skeleton") || !container.parentElement) {
     update();
@@ -179,9 +149,9 @@ export function crossfade(container, update, { fadeContent = true } = {}) {
   if (fadeContent) g.fromTo(container, { opacity: 0 }, { opacity: 1, duration: 0.4, ease: "sine.inOut", clearProps: "opacity" });
 }
 
-/* ---------- 4. Planner: evenings fill, numbers count up ---------- */
+/*--- 4. Planner: evenings fill, numbers count up ---*/
 
-/** The progress bar in each evening grows from the left, one evening after another. */
+//each evening's bar grows from the left, one after another
 export function fillEvenings(container) {
   const bars = container.querySelectorAll?.(".evening__fill") ?? [];
   if (!bars.length || !motionAllowed()) return;
@@ -199,27 +169,14 @@ export function fillEvenings(container) {
   );
 }
 
-/**
- * Text for a counted number at a given moment.
- * @param {"minutes" | "number"} kind
- * @param {number} value
- * @param {{prefix?: string, suffix?: string}} [parts]
- */
+//the text shown while a number is counting (minutes like 2h 30m, or a plain number)
 export function formatCount(kind, value, { prefix = "", suffix = "" } = {}) {
   const body = kind === "minutes" ? formatMinutes(value) : String(Math.round(value));
   return `${prefix}${body}${suffix}`;
 }
 
-/**
- * Counts a number up (or down) to its new value. The element already holds the
- * final text, so reduced motion and failures simply leave it as it is.
- * @param {HTMLElement} el
- * @param {number} from
- * @param {number} to
- * @param {"minutes" | "number"} kind
- * @param {{prefix?: string, suffix?: string}} [parts]
- * @param {number} [delay] seconds to wait before counting starts
- */
+//count a number up (or down). the element already has the final text in it,
+//so if there's no motion it just stays as it is
 export function countUp(el, from, to, kind, parts = {}, delay = 0) {
   if (!motionAllowed() || from === to) return;
   const finalText = el.textContent;
@@ -239,22 +196,22 @@ export function countUp(el, from, to, kind, parts = {}, delay = 0) {
   });
 }
 
-/* ---------- 5. Confirmations: button icon, toast, View plan pill ---------- */
+/*--- 5. Confirmations: button icon, toast, View plan pill ---*/
 
-/** A small pop on the icon of an Add / Added button. */
+//little pop on the Add button icon
 export function popIcon(button) {
   const icon = button?.querySelector?.(".icon");
   if (!icon || !motionAllowed()) return;
   g.fromTo(icon, { scale: 0.5 }, { scale: 1, duration: 0.3, ease: "back.out(2)", clearProps: "transform" });
 }
 
-/** A toast slides up into place. */
+//toast slides up
 export function toastIn(toast) {
   if (!motionAllowed()) return;
   g.from(toast, { y: 16, opacity: 0, duration: 0.3, ease: "power2.out", clearProps: "transform,opacity" });
 }
 
-/** A toast fades away, then calls done. Without motion it is removed at once. */
+//toast fades out, then done() removes it
 export function toastOut(toast, done) {
   if (!motionAllowed()) {
     done();
@@ -263,23 +220,17 @@ export function toastOut(toast, done) {
   g.to(toast, { y: 8, opacity: 0, duration: 0.2, ease: "power1.in", onComplete: done });
 }
 
-/**
- * The View plan pill pops when a title is added.
- * @returns {boolean} true when GSAP handled it (so the CSS fallback is not needed)
- */
+//View plan pill pops when a title is added. returns false if GSAP isn't there, so the CSS version runs
 export function pillPop(pill) {
   if (!motionAllowed()) return false;
   g.fromTo(pill, { y: 14, scale: 0.9, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.35, ease: "back.out(1.7)", clearProps: "transform,opacity" });
   return true;
 }
 
-/* ---------- 6. Page headers: every page opens the same way ---------- */
+/*--- 6. Page headers: every page opens the same way ---*/
 
-/**
- * The heading and intro of Discover, Planner and Saved plans rise in together.
- * Elements opt in with data-header-reveal. They are held hidden only while GSAP is
- * about to reveal them (the has-motion class), and released after four seconds at most.
- */
+//page headings on Discover, Planner and Saved rise in (anything with data-header-reveal).
+//hidden by has-motion until this runs, max 4 seconds
 export function revealPageHeader() {
   const targets = Array.from(win?.document?.querySelectorAll("[data-header-reveal]") ?? []);
   if (!targets.length) return null;
@@ -294,16 +245,12 @@ export function revealPageHeader() {
   );
 }
 
-/* ---------- 7. Detail page: a timeline of the page arriving ---------- */
+/*--- 7. Detail page: a timeline of the page arriving ---*/
 
-/**
- * Poster, title and badges, runtime strip, then the Add button arrive in sequence.
- * The sections below reveal as they scroll into view.
- * @param {ParentNode} root
- * @returns {object | null} the timeline
- */
+//detail page: poster, title, runtime strip, then Add button in order. sections below come in on scroll
 export function revealDetail(root) {
   if (!motionAllowed()) return null;
+  //grab elements inside the detail page
   const pick = (selector) => root.querySelectorAll(selector);
   const rise = { y: 0, opacity: 1, clearProps: "transform" };
   const from = { y: 24, opacity: 0 };
@@ -317,15 +264,12 @@ export function revealDetail(root) {
   return tl;
 }
 
-/* ---------- 8. Logo: an SVG moon that draws itself ---------- */
+/*--- 8. Logo: an SVG moon that draws itself ---*/
 
 const LOGO_FLAG = "wnp:logo-played";
 
-/**
- * The moon and sparkle in the logo draw themselves once per visit (not on every page),
- * and the moon tilts when the logo is hovered or focused.
- * @param {Element | null} mark the .brand__mark element in the header
- */
+//logo moon and sparkle draw themselves once per visit (not every page).
+//tilts on hover or focus
 export function animateLogo(mark) {
   const svg = mark?.querySelector?.("svg");
   const paths = Array.from(svg?.querySelectorAll?.("path") ?? []);
@@ -336,7 +280,7 @@ export function animateLogo(mark) {
     alreadyPlayed = win.sessionStorage.getItem(LOGO_FLAG) === "1";
     win.sessionStorage.setItem(LOGO_FLAG, "1");
   } catch {
-    // Storage blocked: it simply plays every time.
+    //Storage blocked: it simply plays every time.
   }
 
   if (!alreadyPlayed) {
@@ -345,11 +289,12 @@ export function animateLogo(mark) {
     g.timeline()
       .fromTo(mark, { scale: 0.85 }, { scale: 1, duration: 0.45, ease: "back.out(2)", clearProps: "transform" }, 0)
       .to(paths[0], { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut", clearProps: "strokeDasharray,strokeDashoffset" }, 0)
-      // The sparkle is drawn last, as the moon finishes.
+      //The sparkle is drawn last, as the moon finishes.
       .to(paths.slice(1), { strokeDashoffset: 0, duration: 0.4, ease: "power2.out", clearProps: "strokeDasharray,strokeDashoffset" }, 0.7);
   }
 
   const brand = mark.closest("a");
+  //little tilt on the logo
   const tilt = (angle) => g.to(svg, { rotate: angle, duration: 0.4, ease: "power2.out", overwrite: "auto" });
   brand?.addEventListener("mouseenter", () => tilt(-18));
   brand?.addEventListener("mouseleave", () => tilt(0));
@@ -357,20 +302,10 @@ export function animateLogo(mark) {
   brand?.addEventListener("blur", () => tilt(0));
 }
 
-/* ---------- 9. Drag to reorder (Draggable) ---------- */
+/*--- 9. Drag to reorder (Draggable) ---*/
 
-/**
- * Makes the rows of a list reorderable by dragging their handles. While a row is
- * dragged the others slide aside to make room. On release the new position is
- * handed to onCommit, and the dropped row settles into its place.
- *
- * Rows need a [data-id] and a [data-handle] button. Pointer dragging is an
- * enhancement: reordering with the keyboard is handled by the page itself.
- *
- * @param {HTMLElement} list
- * @param {(id: string, toIndex: number) => void} onCommit
- * @returns {() => void} call to remove all dragging from the list
- */
+//drag rows by their handle to reorder. other rows slide out of the way, and on release the new spot goes to onCommit. keyboard reordering is in planner.js.
+//returns a function that turns dragging off again
 export function makeSortable(list, onCommit) {
   if (!g || !Drag) return () => {};
   const rows = Array.from(list.querySelectorAll(".title-row[data-id]"));
@@ -379,6 +314,7 @@ export function makeSortable(list, onCommit) {
   const slide = prefersReducedMotion() ? 0 : 0.2;
   let layout = null; // measured when a drag starts
 
+  //note where each row sits and how tall it is
   const measure = (from) => {
     const listTop = list.getBoundingClientRect().top;
     const rects = rows.map((row) => row.getBoundingClientRect());
@@ -422,20 +358,19 @@ export function makeSortable(list, onCommit) {
         row.classList.remove("is-dragging");
 
         if (from === to) {
-          // Dropped where it started: glide back and clear everything.
+          //Dropped where it started: glide back and clear everything.
           g.to(rows, { y: 0, duration: slide, ease: "power2.out", overwrite: "auto", clearProps: "transform,zIndex" });
           return;
         }
 
-        // Commit the new order (this redraws the list in the new order), then glide the
-        // dropped row from where it was released into its real place. Done on the next
-        // tick so we are not tearing the drag down from inside its own callback.
+        //save the new order (which redraws the list), then slide the row from where it
+        //was dropped into its new spot. setTimeout 0 so we're not redrawing inside Draggable's own callback
         const id = row.dataset.id;
         const releasedTop = row.getBoundingClientRect().top;
         win.setTimeout(() => {
           onCommit(id, to);
           if (list.contains(row)) {
-            // The order was not saved (the list was not redrawn), so put everything back.
+            //The order was not saved (the list was not redrawn), so put everything back.
             g.to(rows, { y: 0, duration: slide, ease: "power2.out", overwrite: "auto", clearProps: "transform,zIndex" });
             return;
           }
@@ -452,25 +387,21 @@ export function makeSortable(list, onCommit) {
   return () => instances.forEach((d) => d?.kill());
 }
 
-/* ---------- 10. Ambient glow: a warm tint that drifts across the page as you scroll ---------- */
+/*--- 10. Ambient glow: a warm tint that drifts across the page as you scroll ---*/
 
-/**
- * Two soft amber glows sit fixed behind the page and drift across it as you scroll, so
- * different parts of the page pick up a warm tint. They are tied to the scroll position
- * (ScrollTrigger scrub), so they stop when you stop. Without motion they stay where the CSS
- * puts them.
- * @param {Element | null} root the .ambient element
- */
+//two amber glows behind the page that drift as you scroll (scrub, so they stop when you stop).
+//no motion = they stay where the CSS puts them
 export function ambientGlow(root) {
   if (!motionAllowed() || !ST || !root) return null;
   const a = root.querySelector(".ambient__glow--a");
   const b = root.querySelector(".ambient__glow--b");
   if (!a || !b) return null;
 
-  // Positions are functions of the window size, so they are recalculated on resize.
+  //% of the screen width -> pixels (functions so they update on resize)
   const x = (percent) => () => win.innerWidth * (percent / 100);
+  //% of the screen height -> pixels
   const y = (percent) => () => win.innerHeight * (percent / 100);
-  // The home page hero already has its own glow, so the first one starts faint there.
+  //The home page hero already has its own glow, so the first one starts faint there.
   const startA = win.document?.body?.dataset?.page === "home" ? 0.25 : 1;
 
   const tl = g.timeline({
@@ -487,7 +418,7 @@ export function ambientGlow(root) {
     .fromTo(b, { x: x(12), y: y(85), opacity: 0.4 }, { x: x(62), y: y(40), opacity: 0.95, duration: 1 }, 0)
     .to(b, { x: x(92), y: y(8), opacity: 0.45, duration: 1 }, 1);
 
-  // Pages grow as their content loads, so work out the scroll length again when they do.
+  //Pages grow as their content loads, so work out the scroll length again when they do.
   if (typeof win.ResizeObserver === "function") {
     let timer;
     new win.ResizeObserver(() => {

@@ -1,15 +1,17 @@
-// Planner maths. Pure functions, no DOM, fully unit tested.
+//Planner maths. Pure functions, no DOM, fully unit tested.
 //
-// Rules (see PRD data handling):
-// - Total runtime = episodes x minutes per episode, summed across the plan.
-// - Ongoing shows (episodes unknown) are listed but not counted.
-// - Movies count as one episode of the full running time.
-// - If the minutes per episode are missing, 24 is used and flagged as an estimate.
-// - The schedule uses the weekdays the user actually picked, so every evening has a real date.
+//Rules (see PRD data handling):
+//- Total runtime = episodes x minutes per episode, summed across the plan.
+//- Ongoing shows (episodes unknown) are listed but not counted.
+//- Movies count as one episode of the full running time.
+//- If the minutes per episode are missing, 24 is used and flagged as an estimate.
+//- The schedule uses the weekdays the user actually picked, so every evening has a real date.
 
 import { startOfDay } from "./utils.js";
 
+//used when a title has no episode length (and flagged as an estimate)
 export const DEFAULT_MINUTES = 24;
+//stops a huge plan from scheduling forever (about a year)
 const MAX_EVENINGS = 366;
 
 /**
@@ -21,10 +23,7 @@ const MAX_EVENINGS = 366;
  * @property {number | null} minutesPerEpisode
  */
 
-/**
- * Runtime of a single title.
- * @param {Title} item
- */
+//runtime for one title: movies count as one episode, ongoing shows aren't counted, 24 min is used if the length is missing
 export function runtimeOf(item) {
   const isMovie = String(item.type ?? "").toLowerCase() === "movie";
   const episodes = item.episodes ?? (isMovie ? 1 : null);
@@ -54,11 +53,7 @@ export function runtimeOf(item) {
   };
 }
 
-/**
- * Totals for a whole plan.
- * @param {Title[]} items
- * @param {number} hoursPerEvening
- */
+//total runtime and evenings needed for the whole plan
 export function planTotals(items, hoursPerEvening) {
   const entries = items.map(runtimeOf);
   const totalMinutes = entries.filter((e) => e.counted).reduce((sum, e) => sum + e.minutes, 0);
@@ -71,17 +66,7 @@ export function planTotals(items, hoursPerEvening) {
   };
 }
 
-/**
- * Builds the evening-by-evening schedule from the weekdays the user picked.
- * Titles are watched in order, and a title can carry over into the next evening.
- *
- * @param {ReturnType<typeof runtimeOf>[]} entries
- * @param {number} minutesPerEvening
- * @param {number[]} days  Weekday numbers, Sunday = 0 ... Saturday = 6
- * @param {Date} [startDate]
- * @param {{includeToday?: boolean, maxEvenings?: number}} [options]
- * @returns {{evenings: {date: Date, minutes: number, segments: {id: number, title: string, minutes: number}[]}[], truncated: boolean}}
- */
+//works out each evening from the weekdays picked. Titles go in order and can carry over into the next evening
 export function buildSchedule(entries, minutesPerEvening, days, startDate = new Date(), options = {}) {
   const { includeToday = true, maxEvenings = MAX_EVENINGS } = options;
   const queue = entries
@@ -120,14 +105,13 @@ export function buildSchedule(entries, minutesPerEvening, days, startDate = new 
   return { evenings, truncated: queue.length > 0 };
 }
 
-/** Date of the last evening, or null when there is no schedule. */
+//date of the last evening, or null if there's no schedule
 export function finishDateOf(evenings) {
   return evenings.length ? evenings[evenings.length - 1].date : null;
 }
 
-/* ---------- Planner controls (pure, so they can be tested) ---------- */
-
-/** Days shown Monday to Sunday. `day` is the JavaScript weekday number (Sunday = 0). */
+/*--- Planner controls (pure, so they can be tested) ---*/
+//days shown Monday to Sunday (day is the JavaScript weekday, Sunday = 0)
 export const WEEK = [
   { day: 1, label: "Mon", name: "Monday" },
   { day: 2, label: "Tue", name: "Tuesday" },
@@ -138,34 +122,25 @@ export const WEEK = [
   { day: 0, label: "Sun", name: "Sunday" },
 ];
 
+//hours per evening limits
 export const MIN_HOURS = 0.5;
 export const MAX_HOURS = 8;
 
-/**
- * Moves hours per evening up or down by half an hour, within limits.
- * @param {number} current
- * @param {1 | -1} direction
- */
+//hours per evening up or down by half an hour, within the limits
 export function stepHours(current, direction) {
   const base = Number(current) > 0 ? Number(current) : 2;
   const halves = base * 2;
-  // Move to the next half-hour mark in the chosen direction, even if the stored value sits between marks.
+  //Move to the next half-hour mark in the chosen direction, even if the stored value sits between marks.
   const next = direction > 0 ? Math.floor(halves + 1e-9) + 1 : Math.ceil(halves - 1e-9) - 1;
   return Math.min(MAX_HOURS, Math.max(MIN_HOURS, next / 2));
 }
 
-/** "2" or "1.5" */
+//2 or 1.5 (no trailing .0)
 export function formatHours(hours) {
   return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
 }
 
-/**
- * Adds or removes a weekday. At least one evening must stay selected,
- * so removing the last one is refused.
- * @param {number[]} days
- * @param {number} day
- * @returns {{days: number[], blocked: boolean}}
- */
+//adds or removes a weekday, but at least one has to stay picked
 export function toggleDay(days, day) {
   const set = new Set(days);
   if (set.has(day)) {
@@ -177,16 +152,9 @@ export function toggleDay(days, day) {
   return { days: [...set].sort((a, b) => a - b), blocked: false };
 }
 
-/* ---------- Reordering titles (pure, so the drag logic can be tested without a browser) ---------- */
+/*--- Reordering titles (pure, so the drag logic can be tested without a browser) ---*/
 
-/**
- * Returns a copy of the list with one item moved to a new position.
- * @template T
- * @param {T[]} list
- * @param {number} from
- * @param {number} to
- * @returns {T[]}
- */
+//copy of the list with one item moved to a new spot
 export function moveItem(list, from, to) {
   const next = [...list];
   if (from === to || from < 0 || from >= next.length) return next;
@@ -196,14 +164,7 @@ export function moveItem(list, from, to) {
   return next;
 }
 
-/**
- * Where a dragged row would land, judged by its vertical middle compared with the
- * middles of the other rows. Every other row whose middle is above the dragged row's
- * middle stays ahead of it.
- * @param {number[]} mids vertical middle of every row, in list order, dragged row included
- * @param {number} draggedIndex
- * @param {number} draggedMid the dragged row's current vertical middle
- */
+//where a dragged row would land, based on the middle of each row
 export function dropIndex(mids, draggedIndex, draggedMid) {
   let index = 0;
   mids.forEach((mid, i) => {
@@ -212,15 +173,7 @@ export function dropIndex(mids, draggedIndex, draggedMid) {
   return index;
 }
 
-/**
- * How far each row must shift to make room while one row is dragged from one
- * position to another. The dragged row itself is controlled by the pointer, so it is 0.
- * @param {number[]} heights height of every row, in list order
- * @param {number} gap space between rows
- * @param {number} from where the dragged row started
- * @param {number} to where it would land now
- * @returns {number[]}
- */
+//how far each row slides to make room while one is dragged (the dragged row itself is 0)
 export function shiftsFor(heights, gap, from, to) {
   const room = heights[from] + gap;
   return heights.map((_, i) => {

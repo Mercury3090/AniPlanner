@@ -1,5 +1,5 @@
-// localStorage layer. Every read and write is wrapped, because storage can be
-// blocked (private mode) or full. Failures return { ok: false } and never throw.
+//everything that saves to localStorage. every read and write is in a try/catch because
+//storage can be blocked (private mode) or full. failures return { ok: false } instead of crashing.
 
 import { moveItem } from "./planner-core.js";
 
@@ -9,6 +9,7 @@ const CHANGE_EVENT = "wnp:change";
 
 const DEFAULT_DRAFT = { titleIds: [], days: [1, 3, 5], hoursPerEvening: 2 };
 
+//read from localStorage, or use the fallback
 function read(key, fallback) {
   try {
     const raw = window.localStorage.getItem(key);
@@ -18,6 +19,7 @@ function read(key, fallback) {
   }
 }
 
+//save to localStorage and tell the pages something changed
 function write(key, value) {
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
@@ -28,7 +30,7 @@ function write(key, value) {
   }
 }
 
-/** True when localStorage can be written to. */
+//test if localStorage works by writing and removing a key
 export function storageAvailable() {
   try {
     const probe = "wnp:probe";
@@ -40,6 +42,7 @@ export function storageAvailable() {
   }
 }
 
+//run a function when the plan changes (also in other tabs). Returns a way to stop
 export function onChange(handler) {
   window.addEventListener(CHANGE_EVENT, handler);
   window.addEventListener("storage", handler);
@@ -49,8 +52,9 @@ export function onChange(handler) {
   };
 }
 
-/* ---------- Draft plan (what is currently in the Planner) ---------- */
+/*--- Draft plan (what is currently in the Planner) --- */
 
+//the plan you're building right now (bad or missing values fall back to the defaults)
 export function getDraft() {
   const stored = read(DRAFT_KEY, DEFAULT_DRAFT);
   return {
@@ -60,18 +64,17 @@ export function getDraft() {
   };
 }
 
+//save the plan you're building
 export function saveDraft(draft) {
   return write(DRAFT_KEY, draft);
 }
 
+//is this title in the plan?
 export function isInDraft(id) {
   return getDraft().titleIds.includes(Number(id));
 }
 
-/**
- * Adds a title to the plan. Pass { index } to put it back at a specific position,
- * which is how Undo restores a removed title to where it was.
- */
+//add a title to the plan. index puts it back in a set spot, which is how Undo works
 export function addToDraft(id, { index } = {}) {
   const draft = getDraft();
   const numeric = Number(id);
@@ -82,7 +85,7 @@ export function addToDraft(id, { index } = {}) {
   return saveDraft({ ...draft, titleIds: ids });
 }
 
-/** Removes a title and reports the position it had, so Undo can put it back. */
+//remove a title and return where it was, so Undo can put it back
 export function removeFromDraft(id) {
   const draft = getDraft();
   const numeric = Number(id);
@@ -91,10 +94,7 @@ export function removeFromDraft(id) {
   return { ...result, index };
 }
 
-/**
- * Moves a title to a new position in the plan, which changes the order it is watched in.
- * @returns {{ok: boolean, moved: boolean, from?: number, to?: number}}
- */
+//move a title to a new spot in the plan (changes the watch order)
 export function moveInDraft(id, toIndex) {
   const draft = getDraft();
   const from = draft.titleIds.indexOf(Number(id));
@@ -105,22 +105,21 @@ export function moveInDraft(id, toIndex) {
   return { ...result, moved: result.ok, from, to };
 }
 
+//remove every title, keep the days and hours
 export function clearDraft() {
   return saveDraft({ ...getDraft(), titleIds: [] });
 }
 
-/* ---------- Saved plans ---------- */
+/* --- Saved plans --- */
 
+//all saved plans
 export function listPlans() {
   const plans = read(PLANS_KEY, []);
   return Array.isArray(plans) ? plans : [];
 }
 
-/**
- * Keeps only the fields the Saved plans page needs, and checks their types, so a
- * plan can never carry odd data into the page.
- * @param {unknown} snapshot
- */
+//only keep what the Saved page needs and check the types, so a saved plan can't carry
+//weird data into the page (max 50 titles, https images only)
 function cleanSnapshot(snapshot) {
   if (!snapshot || typeof snapshot !== "object") return null;
   const titles = Array.isArray(snapshot.titles)
@@ -142,13 +141,8 @@ function cleanSnapshot(snapshot) {
   };
 }
 
-/**
- * Saves the current draft as a named plan. The optional snapshot holds the totals
- * and poster images known at save time, so Saved plans can show them instantly
- * without asking the API again.
- * @param {string} name
- * @param {{totalMinutes?: number, titles?: {id: number, title: string, image: string | null}[], ongoingCount?: number, hasEstimate?: boolean, partial?: boolean}} [snapshot]
- */
+//save the current plan with a name. the snapshot keeps the totals and posters,
+//so the Saved page can show them without calling the API
 export function savePlan(name, snapshot) {
   const draft = getDraft();
   const plan = {
@@ -164,10 +158,8 @@ export function savePlan(name, snapshot) {
   return { ...result, plan };
 }
 
-/**
- * The saved plan that is identical to the current draft (same titles in the same
- * order, same evenings, same hours), or null. Used to show "Saved" on the Planner.
- */
+//find a saved plan that's exactly the same as the current one (titles, order, days, hours).
+//used to show "Saved" on the Planner
 export function findSavedPlan(draft = getDraft()) {
   if (draft.titleIds.length === 0) return null;
   const days = [...draft.days].sort((a, b) => a - b);
@@ -185,13 +177,14 @@ export function findSavedPlan(draft = getDraft()) {
   );
 }
 
-/** True when the plan being edited has titles and matches no saved plan. */
+//true if the current plan has titles and no saved plan has the same titles in the same order
 export function hasUnsavedDraft() {
   const ids = getDraft().titleIds;
   if (ids.length === 0) return false;
   return !listPlans().some((p) => Array.isArray(p.titleIds) && p.titleIds.length === ids.length && p.titleIds.every((id, i) => id === ids[i]));
 }
 
+//delete a saved plan (returns it so Undo works)
 export function deletePlan(id) {
   const plans = listPlans();
   const removed = plans.find((p) => p.id === id);
@@ -202,14 +195,14 @@ export function deletePlan(id) {
   return { ...result, removed };
 }
 
-/** Puts a deleted plan back (used by the Undo toast). */
+//put a deleted plan back in its place (for Undo)
 export function restorePlan(plan) {
   if (!plan) return { ok: false };
   const plans = listPlans().filter((p) => p.id !== plan.id);
   return write(PLANS_KEY, [plan, ...plans].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 }
 
-/** Loads a saved plan into the draft so it can be edited in the Planner. */
+//open a saved plan in the Planner
 export function loadPlanIntoDraft(id) {
   const plan = listPlans().find((p) => p.id === id);
   if (!plan) return { ok: false };

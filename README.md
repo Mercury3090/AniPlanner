@@ -185,6 +185,18 @@ How it stays safe:
 - Messages are announced to screen readers
 - Motion is reduced or removed when the user prefers reduced motion, and never hides content if it fails
 
+## Changes from the PRD
+
+- **Tenrai instead of Jikan.** The public Jikan API closed on 1 October 2026, so the site uses a Jikan-compatible mirror. Only the address in `js/api.js` changed.
+- **View plan pill.** In testing, there was no quick way to the Planner after adding a title, especially on a phone, so a pill now appears in the bottom-right corner.
+- **Clear plan.** Saving left the plan on screen, so I added a Clear plan button with Undo, kept away from Save so it can't be hit by accident.
+- **Drag to reorder.** Titles are watched in list order, so the order matters. Dragging and keyboard reordering were added to the Planner.
+- **Mood fallback.** A title must match every genre of a mood, which could return nothing (Cosy did), so the page tries a mood's genres one at a time and says which it is showing.
+- **Smaller posters on desktop.** After playtesting it was suggested that the posters were too tall on computers, so they are 3:4 from 1024px up and 2:3 below.
+- **Evening glow.** The amber glow from the Home hero was added to add more personal touch as suggested in the feedback from my PRD marking. This was also added to all other pages ad moves slightly while scrolling to add more character to the site.
+- **Icon tilt.** The icon now has a tilt as part of the personal branding.
+- **Icon addition** The icon addition to the home screen was also added for more personal touch.
+
 ## Credits
 
 - Anime data and poster images: [Tenrai](https://tenrai.org), serving [MyAnimeList](https://myanimelist.net) data in the Jikan v4 format

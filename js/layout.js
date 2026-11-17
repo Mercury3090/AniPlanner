@@ -1,6 +1,5 @@
-// Builds the shared header and footer on every page, wires up the mobile menu,
-// and exposes a toast helper. Each page sets data-page on <body> so the
-// matching nav link is marked with aria-current="page".
+//Builds the shared header and footer on every page, wires up the mobile menu,
+//and exposes a toast helper. Each page sets data-page on <body> so the matching nav link is marked with aria-current="page".
 
 import { icon } from "./icons.js";
 import { getDraft, onChange } from "./storage.js";
@@ -16,6 +15,7 @@ const LINKS = [
 
 const MOBILE_QUERY = window.matchMedia("(max-width: 767px)");
 
+//builds the header and marks the page you're on
 function headerMarkup(current) {
   const items = LINKS.map((link) => {
     const active = link.key === current ? ' aria-current="page"' : "";
@@ -38,6 +38,7 @@ function headerMarkup(current) {
     </div>`;
 }
 
+//builds the footer
 function footerMarkup() {
   const items = LINKS.map((l) => `<li><a href="${l.href}">${l.label}</a></li>`).join("");
   return `
@@ -51,10 +52,12 @@ function footerMarkup() {
     </div>`;
 }
 
+//mobile menu: opens and closes. Escape, tapping a link, or going wider than mobile closes it too
 function setupMenu(header) {
   const toggle = header.querySelector(".nav-toggle");
   const nav = header.querySelector(".site-nav");
 
+  //open or close the menu and update the button
   function setOpen(open, { returnFocus = false } = {}) {
     nav.dataset.open = String(open);
     toggle.setAttribute("aria-expanded", String(open));
@@ -74,9 +77,9 @@ function setupMenu(header) {
   setOpen(false);
 }
 
-/* ---------- Ambient glow ---------- */
+/*--- Ambient glow ---*/
 
-/** A warm amber tint behind every page. Decorative, so hidden from assistive technology. */
+//the amber glow behind every page. just decoration, so screen readers skip it
 function setupAmbient() {
   if (document.querySelector(".ambient")) return;
   const root = document.createElement("div");
@@ -87,13 +90,14 @@ function setupAmbient() {
   ambientGlow(root);
 }
 
-/* ---------- "View plan" pill ---------- */
+/*--- "View plan" pill ---*/
 
-// Shown on the pages where titles are added, so the next step is always one tap away.
+//Shown on the pages where titles are added, so the next step is always one tap away.
 const PILL_PAGES = new Set(["home", "discover"]);
 let pill = null;
 let pillCount = 0;
 
+//makes the View plan pill (only on pages where you add titles)
 function setupPlanPill() {
   if (!PILL_PAGES.has(document.body.dataset.page ?? "")) return;
   pill = document.createElement("a");
@@ -105,6 +109,7 @@ function setupPlanPill() {
   onChange(updatePlanPill);
 }
 
+//keeps the pill's count right and hides it when the plan is empty
 function updatePlanPill() {
   const count = getDraft().titleIds.length;
   const grew = count > pillCount;
@@ -113,18 +118,19 @@ function updatePlanPill() {
   pill.innerHTML = `${icon("calendar")}<span>View plan</span><span class="nav-count" aria-hidden="true">${count}</span>`;
   document.body.classList.toggle("has-plan-pill", count > 0);
 
-  // A small pop when a title is added (not when the page first loads with a plan already in it).
+  //A small pop when a title is added (not when the page first loads with a plan already in it).
   if (grew && pillCount !== null) {
     pill.classList.remove("plan-pill--pop");
-    // GSAP does the pop; if it is unavailable the CSS animation is the fallback.
+    //GSAP does the pop; if it is unavailable the CSS animation is the fallback.
     if (!pillPop(pill)) {
-      void pill.offsetWidth; // restart the animation
+      void pill.offsetWidth;      //restart the animation
       pill.classList.add("plan-pill--pop");
     }
   }
   pillCount = count;
 }
 
+//number next to Planner in the nav
 function updateCount() {
   const el = document.querySelector("[data-plan-count]");
   if (!el) return;
@@ -134,13 +140,8 @@ function updateCount() {
   el.setAttribute("aria-label", `${count} ${count === 1 ? "title" : "titles"} in your plan`);
 }
 
-/**
- * Shows a short message at the bottom of the screen.
- * @param {string} message
- * @param {{action?: {label: string, onClick: () => void}, duration?: number, tone?: "success" | "removed"}} [options]
- *   tone "success" shows a green tick, "removed" shows a red minus circle.
- * @returns {HTMLElement}
- */
+//small message at the bottom of the screen, with an optional button (like Undo).
+//tone is "success" (green tick) or "removed" (red minus). goes away after 4 seconds by default
 export function showToast(message, { action, duration = 4000, tone = "success" } = {}) {
   let region = document.querySelector(".toast-region");
   if (!region) {
@@ -174,6 +175,7 @@ export function showToast(message, { action, duration = 4000, tone = "success" }
   return toast;
 }
 
+//runs on every page: I build the header and footer here, start the glow and keep the plan count updated
 function init() {
   const current = document.body.dataset.page ?? "";
   const header = document.getElementById("site-header");

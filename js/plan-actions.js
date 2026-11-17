@@ -1,19 +1,14 @@
-// The one place that adds or removes a title from the plan, so every page behaves
-// the same way (same messages, same Undo).
+//The one place that adds or removes a title from the plan, so every page behaves the same way (same messages, same Undo).
 
 import { addToDraft, clearDraft, getDraft, isInDraft, removeFromDraft, saveDraft } from "./storage.js";
 import { showToast } from "./layout.js";
 
-/**
- * Toggles a title in the plan and shows a toast with Undo.
- * @param {{id: number, title: string}} item
- * @returns {{ok: boolean, added: boolean}} ok is false when storage is blocked or full
- */
+//adds or removes a title and shows a toast with Undo
 export function togglePlan(item) {
   if (isInDraft(item.id)) {
     const result = removeFromDraft(item.id);
     if (!result.ok) return { ok: false, added: false };
-    // Undo puts the title back in the same position, so the watch order is unchanged.
+    //Undo puts the title back in the same position, so the watch order is unchanged.
     showToast(`Removed ${item.title} from your plan`, { tone: "removed", action: { label: "Undo", onClick: () => addToDraft(item.id, { index: result.index }) } });
     return { ok: true, added: false };
   }
@@ -23,11 +18,7 @@ export function togglePlan(item) {
   return { ok: true, added: true };
 }
 
-/**
- * Empties the plan (keeping the chosen evenings and hours) and offers Undo, which
- * puts every title back in its original order.
- * @returns {{ok: boolean, cleared: boolean}}
- */
+//empties the plan (keeps the days and hours) with an Undo that puts everything back in order
 export function clearPlan() {
   const previous = getDraft().titleIds;
   if (previous.length === 0) return { ok: true, cleared: false };

@@ -1,7 +1,8 @@
-/* Page-specific layout. Components live in components.css. */
+/*Page-specific layout. Components live in components.css.*/
 
-/* ---------- Card extras ---------- */
+/*--- Card extras ---*/
 .card-grid__item { min-width: 0; }
+/*Runtime line on a card.*/
 .card__runtime {
   display: flex;
   align-items: center;
@@ -11,12 +12,13 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+/*Runtime line when no runtime is known.*/
 .card__runtime--none { color: var(--color-text-muted); font-weight: 400; font-size: var(--text-caption); }
 .card__placeholder { display: grid; place-items: center; width: 100%; height: 100%; }
 .card__placeholder .icon { width: 2rem; height: 2rem; }
 .badge__dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; }
 
-/* ---------- Discover ---------- */
+/*--- Discover ---*/
 .search { max-width: 40rem; margin-block: var(--space-lg) var(--space-md); }
 
 .filters-toggle { margin-bottom: var(--space-md); }
@@ -38,6 +40,7 @@
   color: var(--color-text-muted);
 }
 .filter-sort { max-width: 14rem; }
+/*Sort dropdown look (custom arrow).*/
 select.input {
   appearance: none;
   padding-right: 2.5rem;
@@ -47,14 +50,17 @@ select.input {
   background-size: 1.25rem;
 }
 
+/*Mobile (up to 767px): the filter panel can be collapsed.*/
 @media (max-width: 767px) {
   .filters[data-open="false"] { display: none; }
 }
+/*Tablet and up: hides the Filters button and always shows the filters.*/
 @media (min-width: 768px) {
   .filters-toggle { display: none; }
   .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
   .filter-sort { grid-column: 1 / -1; }
 }
+/*Desktop: filters sit in one row.*/
 @media (min-width: 1024px) {
   .filters { grid-template-columns: auto auto 14rem; justify-content: start; column-gap: var(--space-2xl); }
   .filter-sort { grid-column: auto; }
@@ -62,9 +68,10 @@ select.input {
 
 .results-status { margin: 0 0 var(--space-sm); min-height: var(--lh-caption); }
 .load-more { display: flex; justify-content: center; margin-top: var(--space-xl); }
+/*Space under the banner area when it has content*/
 #banner-region:not(:empty) { margin-bottom: var(--space-md); }
 
-/* ---------- Anime detail ---------- */
+/*--- Anime detail ---*/
 .back-link {
   display: inline-flex;
   align-items: center;
@@ -92,14 +99,17 @@ select.input {
 .detail__section { min-width: 0; }
 .detail__section > h2 { margin-bottom: var(--space-sm); }
 
+/*Tablet and up: poster beside the summary.*/
 @media (min-width: 768px) {
   .detail__hero { grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr); gap: var(--space-xl); align-items: start; }
   .detail__poster { width: 100%; }
 }
+/*Small screens: action buttons fill the width.*/
 @media (max-width: 599px) {
   .detail__actions .btn { width: 100%; }
 }
 
+/*Row of runtime numbers.*/
 .runtime-strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
@@ -133,6 +143,7 @@ select.input {
 .runtime-note .icon { color: var(--color-primary); margin-top: 0.125rem; }
 
 .synopsis { margin: 0 0 var(--space-sm); max-width: 70ch; white-space: pre-line; overflow-wrap: anywhere; }
+/*Shortened synopsis with Read more.*/
 .synopsis--clamped {
   display: -webkit-box;
   -webkit-line-clamp: 6;
@@ -177,6 +188,7 @@ iframe.trailer--playing { border: 0; background: #000; }
   padding: 0;
   list-style: none;
 }
+/*Four related anime per row from 768px.*/
 @media (min-width: 768px) { .related-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .related-card {
   display: grid;
@@ -203,6 +215,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   color: var(--color-text-muted);
 }
 .related-card__media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
+/*Related card title (shortened to two lines).*/
 .related-card__title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -216,10 +229,10 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   padding-inline: var(--space-xs);
 }
 
-/* Text buttons have inner padding; pull them back so the label lines up with the text above. */
+/*Text buttons have inner padding; pull them back so the label lines up with the text above.*/
 #synopsis-toggle { margin-inline-start: -0.75rem; }
 
-/* ---------- Planner ---------- */
+/*--- Planner ---*/
 .panel {
   padding: var(--space-lg);
   border: 1px solid var(--color-border);
@@ -227,22 +240,26 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   background: var(--color-surface);
 }
 
+/*Planner settings area (days and hours).*/
 .planner-settings {
   display: grid;
   gap: var(--space-lg);
   margin-block: var(--space-lg);
 }
+/*Tablet and up: settings sit side by side.*/
 @media (min-width: 768px) {
   .planner-settings { grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--space-2xl); align-items: start; }
 }
 
 .planner-layout { display: grid; gap: var(--space-xl); }
+/*Desktop: titles on the left and summary on the right.*/
 @media (min-width: 1024px) {
   .planner-layout { grid-template-columns: minmax(0, 1fr) 22rem; align-items: start; }
   .planner-summary { position: sticky; top: calc(var(--header-height) + var(--space-md)); }
 }
 .planner-main > h2,
 .planner-summary > h2 { margin-bottom: var(--space-md); }
+/*The heading gets focus when the plan is emptied, so it doesn't need an outline.*/
 .planner-main > h2:focus { outline: none; }
 .planner-add { margin-top: var(--space-md); }
 
@@ -289,7 +306,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   font-variant-numeric: tabular-nums;
 }
 
-/* A title that could not be loaded: red, like every other error */
+/*A title that could not be loaded: red, like every other error*/
 .title-row--failed {
   grid-template-columns: minmax(0, 1fr) auto;
   padding: var(--space-md);
@@ -341,13 +358,14 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 }
 .evening__head { display: flex; justify-content: space-between; gap: var(--space-sm); font-size: var(--text-caption); color: var(--color-text-muted); }
 .evening__date { color: var(--color-text); font-weight: 600; }
+/*Bar showing how full the evening is.*/
 .evening__bar { height: 8px; overflow: hidden; border-radius: var(--radius-pill); background: var(--color-skeleton); }
+/*The filled part of the bar.*/
 .evening__fill { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); }
 .evening__time { margin: 0; font-family: var(--font-heading); font-size: 1.125rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 .evening__what { margin: 0; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--color-text-muted); overflow-wrap: anywhere; }
 
-
-/* ---------- Saved plans ---------- */
+/*--- Saved plans ---*/
 .page-header {
   display: flex;
   flex-wrap: wrap;
@@ -359,6 +377,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .page-header h1 { margin-bottom: var(--space-sm); }
 .page-header p { margin: 0; }
 .page-header h1:focus { outline: none; }
+/*Small screens: header buttons fill the width.*/
 @media (max-width: 599px) { .page-header .btn { width: 100%; } }
 
 .plan-grid {
@@ -369,6 +388,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   padding: 0;
   list-style: none;
 }
+/*Lets grid items shrink.*/
 .plan-grid > li { min-width: 0; }
 .plan-card {
   display: grid;
@@ -381,6 +401,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   background: var(--color-surface);
 }
 .plan-card__title { margin: 0; font-size: 1.125rem; line-height: 1.5rem; overflow-wrap: anywhere; }
+/*Row of mini posters.*/
 .plan-card__posters { display: flex; gap: var(--space-sm); }
 .plan-card__poster {
   display: grid;
@@ -402,6 +423,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .plan-card__meta { margin: 0; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--color-text-muted); }
 .plan-card__actions { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
 
+/*The Create a plan card.*/
 .plan-card--new {
   display: grid;
   place-items: center;
@@ -418,7 +440,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .plan-card--new .icon { width: 1.75rem; height: 1.75rem; color: var(--color-primary); }
 .plan-card--new:hover { border-color: var(--color-primary); color: var(--color-text); background: var(--color-surface-raised); }
 
-/* ---------- Home ---------- */
+/*--- Home ---*/
 .hero {
   display: grid;
   gap: var(--space-xl);
@@ -455,13 +477,15 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 }
 .hero-poster img { width: 100%; height: 100%; object-fit: cover; }
 .hero-poster .icon { width: 2rem; height: 2rem; }
-/* The middle poster sits higher, so the trio reads as a stack of covers. */
+/*The middle poster sits higher, so the trio reads as a stack of covers.*/
 .hero-posters > li:nth-child(odd) { margin-top: var(--space-lg); }
 
+/*Mobile (up to 767px): posters appear above the text.*/
 @media (max-width: 767px) {
   .hero-posters { order: -1; max-width: 24rem; }
   .hero__actions .btn { width: 100%; }
 }
+/*Tablet and up: text and posters side by side.*/
 @media (min-width: 768px) {
   .hero { grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: var(--space-2xl); padding-block: var(--space-xl); }
   .hero-posters { gap: var(--space-md); }
@@ -472,9 +496,11 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .home-section .section__header { margin-bottom: var(--space-md); }
 .home-section .section__header h2 { margin: 0; }
 .home-section .section__header a { min-height: 44px; display: inline-flex; align-items: center; }
+/*Space under the Airing now banner.*/
 #airing-banner:not(:empty) { margin-bottom: var(--space-md); }
 
 .steps { display: grid; gap: var(--gutter); margin: 0; padding: 0; list-style: none; }
+/*Three steps in a row from 768px.*/
 @media (min-width: 768px) { .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .step {
   padding: var(--space-lg);
@@ -496,7 +522,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .step h3 { margin-bottom: var(--space-sm); }
 .step p:last-child { margin: 0; color: var(--color-text-muted); }
 
-/* ---------- Planner: saved state ---------- */
+/*--- Planner: saved state ---*/
 .saved-state {
   display: flex;
   flex-wrap: wrap;
@@ -509,18 +535,19 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 .saved-state .icon { flex: none; }
 .saved-state a { color: var(--color-success); }
 
-/* ---------- Motion ---------- */
-/* The hero text is held back only while GSAP is about to reveal it. The class is removed
-   by the animation code, by reduced motion, or after 4 seconds, so nothing stays hidden. */
+/*--- Motion ---*/
+/*The hero text is held back only while GSAP is about to reveal it. The class is removed by the animation code, by reduced motion, or after 4 seconds, so nothing stays hidden.*/
 .has-motion .hero__title,
 .has-motion .hero__lead,
 .has-motion .hero__actions,
 .has-motion .hero__moon,
 .has-motion [data-header-reveal] { opacity: 0; }
 
-/* ---------- Planner: drag to reorder ---------- */
+/*--- Planner: drag to reorder ---*/
 .title-list { position: relative; }
+/*Title row that can be dragged.*/
 .title-row--sortable { grid-template-columns: 44px 56px minmax(0, 1fr) auto; gap: var(--space-sm) var(--space-md); }
+/*Drag handle button.*/
 .drag-handle {
   display: grid;
   place-items: center;
@@ -532,28 +559,29 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   background: transparent;
   color: var(--color-text-muted);
   cursor: grab;
-  touch-action: none; /* lets a finger drag the row instead of scrolling the page */
+  touch-action: none; /*lets a finger drag the row instead of scrolling the page*/
 }
 .drag-handle:hover { background: var(--color-surface-raised); color: var(--color-text); }
 .drag-handle:active { cursor: grabbing; }
+/*Row being dragged.*/
 .title-row.is-dragging {
   border-color: var(--color-primary);
   background: var(--color-surface-raised);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
   cursor: grabbing;
 }
+/*Small screens: narrower drag row.*/
 @media (max-width: 479px) {
   .title-row--sortable { grid-template-columns: 44px 48px minmax(0, 1fr) auto; gap: var(--space-sm); }
 }
 
-/* Small posters keep their own shape, so their loading placeholders fill them completely. */
+/*Small posters keep their own shape, so their loading placeholders fill them completely.*/
 .hero-poster .skeleton--poster,
 .title-row__media .skeleton--poster { aspect-ratio: auto; height: 100%; }
 
-/* ---------- Brand: hero details ---------- */
+/*--- Brand: hero details ---*/
 .hero { position: relative; overflow-x: clip; isolation: isolate; }
-/* A soft evening glow behind the hero. It fades to nothing before the edge of its box,
-   so there is no visible edge. */
+/*A soft evening glow behind the hero. It fades to nothing before the edge of its box, so there is no visible edge.*/
 .hero::before {
   content: "";
   position: absolute;
@@ -565,7 +593,6 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   background: radial-gradient(closest-side, rgba(245, 158, 11, 0.13), transparent);
   pointer-events: none;
 }
-/* The logo's moon and sparkle, drawn large and faint behind the posters. */
 .hero__moon {
   position: absolute;
   z-index: -1;
@@ -581,10 +608,14 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   stroke-linejoin: round;
   pointer-events: none;
 }
+/*Keeps the moon's line thin when it's scaled up.*/
 .hero__moon path { vector-effect: non-scaling-stroke; }
+/*Tiny stars around the moon.*/
 .hero__moon circle { fill: var(--color-primary); fill-opacity: 0.35; stroke: none; }
 
+/*The highlighted words in the hero heading.*/
 .hero__accent { position: relative; color: var(--color-primary); white-space: nowrap; }
+/*Hand-drawn underline under the hero words.*/
 .hero__underline {
   position: absolute;
   left: 0;
@@ -594,19 +625,19 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   overflow: visible;
   fill: none;
   stroke: var(--color-primary);
-  stroke-width: 2.6; /* in drawing units, so the line stays one piece when it is drawn in */
+  stroke-width: 2.6; /*in drawing units, so the line stays one piece when it is drawn in*/
   stroke-linecap: round;
   pointer-events: none;
 }
 
+/*Mobile (up to 767px): moon position and size.*/
 @media (max-width: 767px) {
   .hero__moon { top: -2%; right: -14%; width: 78%; }
 }
 
-/* ---------- Ambient glow ---------- */
-/* Two soft amber glows fixed behind every page. They drift as you scroll (see ambientGlow in
-   animations.js). These positions are where they sit without motion. Cards and panels have
-   solid backgrounds, so the tint shows in the gaps and never sits behind text. */
+/*--- Ambient glow ---*/
+/*Two soft amber glows fixed behind every page. They drift as you scroll (see ambientGlow in animations.js). These positions are where they sit without motion. Cards and panels have
+   solid backgrounds, so the tint shows in the gaps and never sits behind text.*/
 .ambient {
   --glow-size: min(70vmax, 60rem);
   position: fixed;
@@ -615,6 +646,7 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
   overflow: hidden;
   pointer-events: none;
 }
+/*Size and shape shared by both glows.*/
 .ambient__glow {
   position: absolute;
   top: 0;
@@ -627,5 +659,5 @@ a.related-card:focus-visible { outline: var(--focus-ring); outline-offset: 2px; 
 }
 .ambient__glow--a { background: radial-gradient(closest-side, rgba(245, 158, 11, 0.17), transparent); transform: translate(85vw, 12vh); }
 .ambient__glow--b { background: radial-gradient(closest-side, rgba(253, 186, 116, 0.12), transparent); transform: translate(12vw, 85vh); opacity: 0.4; }
-/* The home page hero already has its own glow. */
+/*The home page hero already has its own glow.*/
 [data-page="home"] .ambient__glow--a { opacity: 0.25; }

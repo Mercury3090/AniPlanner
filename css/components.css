@@ -1,6 +1,6 @@
-/* Components. Each block matches a component in the Figma design system. */
+/*Components. Each block matches a component in the Figma design system.*/
 
-/* ---------- Icons ---------- */
+/*---Icons---*/
 .icon {
   width: 1.25em;
   height: 1.25em;
@@ -14,7 +14,7 @@
 .icon--spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ---------- Header and navigation ---------- */
+/*--- Header and navigation ---*/
 .site-header {
   position: sticky;
   top: 0;
@@ -22,6 +22,7 @@
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
 }
+/*Header: logo on the left, nav on the right.*/
 .site-header__inner {
   display: flex;
   align-items: center;
@@ -29,6 +30,7 @@
   gap: var(--space-md);
   min-height: var(--header-height);
 }
+/*The AniPlanner logo and wordmark.*/
 .brand {
   display: inline-flex;
   align-items: center;
@@ -38,7 +40,9 @@
   color: var(--color-text);
   text-decoration: none;
 }
+/*Colours the second part of the wordmark ("Planner") amber.*/
 .brand__name b { color: var(--color-primary); font-weight: inherit; }
+/*The rounded-square logo mark that holds the moon icon.*/
 .brand__mark {
   display: grid;
   place-items: center;
@@ -48,6 +52,7 @@
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
+/*Navigation links in a row.*/
 .site-nav ul {
   display: flex;
   gap: var(--space-lg);
@@ -65,10 +70,12 @@
   border-bottom: 2px solid transparent;
 }
 .site-nav a:hover { color: var(--color-text); }
+/*Highlights the link for the page you are on.*/
 .site-nav a[aria-current="page"] {
   color: var(--color-text);
   border-bottom-color: var(--color-primary);
 }
+/*The small number bubble next to Planner.*/
 .nav-count {
   min-width: 1.25rem;
   padding: 0 0.375rem;
@@ -80,6 +87,7 @@
   line-height: 1.25rem;
   text-align: center;
 }
+/*The mobile menu button (hidden on larger screens).*/
 .nav-toggle {
   display: none;
   place-items: center;
@@ -90,6 +98,7 @@
   background: transparent;
   color: var(--color-text);
 }
+/*Mobile: shows the menu button and turns the nav into a dropdown.*/
 @media (max-width: 767px) {
   .nav-toggle { display: grid; }
   .site-nav {
@@ -107,7 +116,7 @@
   .site-nav a[aria-current="page"] { border-left-color: var(--color-primary); }
 }
 
-/* ---------- Footer ---------- */
+/*--- Footer ---*/
 .site-footer {
   margin-top: var(--space-2xl);
   background: var(--color-surface);
@@ -127,7 +136,7 @@
 .site-footer a { color: var(--color-text-muted); }
 .site-footer a:hover { color: var(--color-text); }
 
-/* ---------- Buttons ---------- */
+/*--- Buttons ---*/
 .btn {
   display: inline-flex;
   align-items: center;
@@ -145,25 +154,31 @@
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
+/*Main amber button.*/
 .btn--primary { background: var(--color-primary); color: var(--color-on-primary); }
 .btn--primary:hover { background: var(--color-primary-hover); }
 .btn--primary:active { background: var(--color-primary-pressed); }
 
+/*Outlined amber button.*/
 .btn--secondary { background: transparent; border-color: var(--color-primary); color: var(--color-accent); }
 .btn--secondary:hover { background: rgba(245, 158, 11, 0.14); }
 .btn--secondary:active { background: rgba(245, 158, 11, 0.26); border-color: var(--color-primary-pressed); }
 
+/*Text-only button.*/
 .btn--text { background: transparent; color: var(--color-accent); padding-inline: 0.75rem; }
 .btn--text:hover { text-decoration: underline; }
 .btn--text:active { color: var(--color-primary-pressed); }
 
+/*Quiet grey outlined button.*/
 .btn--quiet { background: transparent; border-color: var(--color-border-strong); color: var(--color-text); }
 .btn--quiet:hover { background: var(--color-surface-raised); }
 .btn--quiet:active { background: var(--color-border); }
 
+/*Smaller button size (still 44px tall for touch).*/
 .btn--small { min-height: 44px; padding: 0.5rem 1rem; font-size: var(--text-caption); }
 .btn--block { width: 100%; }
 
+/*Disabled button look.*/
 .btn:disabled,
 .btn[aria-disabled="true"] {
   background: var(--color-disabled-bg);
@@ -172,11 +187,14 @@
   cursor: not-allowed;
   text-decoration: none;
 }
+/*Disabled outlined and text buttons stay see-through.*/
 .btn--secondary:disabled,
 .btn--text:disabled { background: transparent; }
 .btn--secondary:disabled { border-color: var(--color-border); }
+/*A button that is busy ignores clicks.*/
 .btn[aria-busy="true"] { pointer-events: none; }
 
+/*Square icon-only button.*/
 .icon-btn {
   display: inline-grid;
   place-items: center;
@@ -190,10 +208,12 @@
 .icon-btn:hover { background: var(--color-surface-raised); }
 .icon-btn:disabled { color: var(--color-disabled-text); border-color: var(--color-border); cursor: not-allowed; background: transparent; }
 
-/* ---------- Inputs ---------- */
+/*--- Inputs ---*/
 .field { display: grid; gap: var(--space-xs); }
 .field__label { font-size: var(--text-caption); color: var(--color-text-muted); }
+/*Wrapper that positions an icon inside an input.*/
 .input-wrap { position: relative; display: flex; align-items: center; }
+/*Icon placed inside the left of the input.*/
 .input-wrap > .icon { position: absolute; left: var(--space-md); color: var(--color-text-muted); pointer-events: none; }
 .input {
   width: 100%;
@@ -204,20 +224,23 @@
   background: var(--color-surface);
   color: var(--color-text);
 }
+/*Extra side padding when the input has icons.*/
 .input-wrap .input { padding-left: 2.75rem; padding-right: 2.75rem; }
 .input::placeholder { color: var(--color-text-muted); }
 .input:focus-visible { outline: var(--focus-ring); outline-offset: 2px; border-color: var(--color-accent); }
 .input[aria-invalid="true"] { border-color: var(--color-error); }
+/*Clear (X) button inside the search box.*/
 .input-wrap .input-clear { position: absolute; top: 50%; right: 2px; transform: translateY(-50%); }
-/* Our own clear button replaces the one browsers add to search fields. */
+/*My own clear button replaces the one browsers add to search fields.*/
 .input[type="search"]::-webkit-search-cancel-button,
 .input[type="search"]::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
 .field__error { display: flex; align-items: center; gap: var(--space-xs); font-size: var(--text-caption); color: var(--color-error); }
 
+/*Plus and minus control for hours.*/
 .stepper { display: inline-flex; align-items: center; gap: var(--space-sm); }
 .stepper__value { min-width: 2.5rem; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-/* ---------- Chips and badges ---------- */
+/*--- Chips and badges ---*/
 .chip {
   display: inline-flex;
   align-items: center;
@@ -232,6 +255,7 @@
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
 .chip:hover { background: var(--color-surface-raised); }
+/*A chip that is switched on.*/
 .chip[aria-pressed="true"] {
   background: var(--color-primary);
   border-color: var(--color-primary);
@@ -239,6 +263,7 @@
   font-weight: 600;
 }
 
+/*Small status label.*/
 .badge {
   display: inline-flex;
   align-items: center;
@@ -250,11 +275,14 @@
   font-size: 0.8125rem;
   line-height: 1.25rem;
 }
+/*Green badge for airing titles.*/
 .badge--airing { background: rgba(61, 214, 140, 0.15); color: var(--color-success); }
+/*Badge for upcoming titles.*/
 .badge--upcoming { background: rgba(253, 186, 116, 0.15); color: var(--color-accent); }
+/*Amber badge for ongoing titles.*/
 .badge--ongoing { background: rgba(245, 158, 11, 0.18); color: var(--color-primary); }
 
-/* ---------- Anime card ---------- */
+/*--- Anime card ---*/
 .card-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -263,7 +291,9 @@
   padding: 0;
   list-style: none;
 }
+/*Three cards per row from 768px.*/
 @media (min-width: 768px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+/*Four cards per row from 1024px.*/
 @media (min-width: 1024px) { .card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .card {
@@ -278,6 +308,7 @@
   background: var(--color-surface);
   transition: border-color 0.2s, background-color 0.2s;
 }
+/*Card highlight on hover or focus.*/
 .card:hover,
 .card:focus-within { background: var(--color-surface-raised); border-color: var(--color-primary); }
 .card__media {
@@ -290,6 +321,7 @@
   place-items: center;
   color: var(--color-text-muted);
 }
+/*Poster image fills the area and keeps the top of the poster in view.*/
 .card__media img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 25%; }
 .card__body { display: grid; gap: var(--space-xs); padding-inline: var(--space-xs); flex: 1; align-content: start; }
 .card__title {
@@ -305,13 +337,16 @@
   overflow-wrap: anywhere;
 }
 .card__title a { color: var(--color-text); text-decoration: none; }
+/*Stretches the title link so the whole card is clickable.*/
 .card__title a::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-lg); }
+/*The card shows the focus ring instead of the link.*/
 .card__title a:focus-visible { outline: none; }
+/*Focus ring around the whole card.*/
 .card:has(.card__title a:focus-visible) { outline: var(--focus-ring); outline-offset: 2px; }
 .card__meta { margin: 0; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--color-text-muted); }
 .card__actions { position: relative; z-index: 1; padding: var(--space-xs); }
 
-/* ---------- Skeleton ---------- */
+/*--- Skeleton ---*/
 .skeleton {
   display: block;
   border-radius: var(--radius-md);
@@ -322,7 +357,7 @@
 .skeleton--poster { aspect-ratio: var(--poster-ratio); }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 
-/* ---------- Message banner, empty state, toast ---------- */
+/*--- Message banner, empty state, toast ---*/
 .banner {
   display: flex;
   align-items: center;
@@ -333,25 +368,30 @@
   background: var(--color-surface);
 }
 .banner__text { flex: 1; margin: 0; }
+/*Green success banner.*/
 .banner--success { border-color: var(--color-success); background: rgba(61, 214, 140, 0.1); }
 .banner--success .icon { color: var(--color-success); }
+/*Red error banner.*/
 .banner--error { border-color: var(--color-error); background: rgba(255, 107, 107, 0.1); }
 .banner--error .icon { color: var(--color-error); }
+/*Amber warning banner.*/
 .banner--warning { border-color: var(--color-primary); background: rgba(245, 158, 11, 0.1); }
 .banner--warning .icon { color: var(--color-primary); }
+/*Small screens: banner wraps and the button fills the width.*/
 @media (max-width: 599px) { .banner { flex-wrap: wrap; } .banner .btn { width: 100%; } }
 
-/* The action button inside a banner takes the banner's colour, so an error is red
-   all the way through and a success is green. Warnings stay amber (the default). */
+/*The action button inside a banner takes the banner's colour, so an error is red
+   all the way through and a success is green. Warnings stay amber (the default).*/
 .banner--error .btn--secondary { border-color: var(--color-error); color: var(--color-error); }
 .banner--error .btn--secondary:hover { background: rgba(255, 107, 107, 0.14); }
 .banner--error .btn--secondary:active { background: rgba(255, 107, 107, 0.26); border-color: var(--color-error); }
 
+/*Success banner button colours.*/
 .banner--success .btn--secondary { border-color: var(--color-success); color: var(--color-success); }
 .banner--success .btn--secondary:hover { background: rgba(61, 214, 140, 0.14); }
 .banner--success .btn--secondary:active { background: rgba(61, 214, 140, 0.26); border-color: var(--color-success); }
 
-
+/*Empty state: centred message, illustration and button.*/
 .empty-state {
   display: grid;
   justify-items: center;
@@ -367,6 +407,7 @@
 .empty-state h2, .empty-state h3 { margin: 0; }
 .empty-state p { max-width: 36ch; margin: 0 0 var(--space-sm); color: var(--color-text-muted); }
 
+/*Fixed area where toast messages appear.*/
 .toast-region {
   position: fixed;
   inset-inline: var(--page-margin);
@@ -392,7 +433,7 @@
 .toast--success .icon { color: var(--color-success); }
 .toast--removed .icon { color: var(--color-error); }
 
-/* ---------- Dialog ---------- */
+/*--- Dialog ---*/
 .dialog {
   width: min(92vw, 28rem);
   padding: var(--space-lg);
@@ -405,9 +446,10 @@
 .dialog h2 { margin-bottom: var(--space-sm); }
 .dialog p { color: var(--color-text-muted); }
 .dialog__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-sm); margin-top: var(--space-lg); }
+/*On small screens dialog buttons fill the width.*/
 @media (max-width: 479px) { .dialog__actions .btn { width: 100%; } }
 
-/* ---------- "View plan" pill ---------- */
+/*--- "View plan" pill ---*/
 .plan-pill {
   position: fixed;
   right: var(--page-margin);
@@ -428,18 +470,20 @@
 }
 .plan-pill:hover { background: var(--color-primary-hover); }
 .plan-pill:active { background: var(--color-primary-pressed); }
+/*The count bubble inside the plan pill.*/
 .plan-pill .nav-count { background: var(--color-on-primary); color: var(--color-primary); }
+/*Pop when a title is added. Only a fallback: GSAP's pillPop() does it when GSAP is loaded.*/
 .plan-pill--pop { animation: pill-pop 0.35s ease-out; }
 @keyframes pill-pop {
   0% { transform: translateY(14px) scale(0.9); opacity: 0; }
   60% { transform: translateY(0) scale(1.05); opacity: 1; }
   100% { transform: none; }
 }
-/* Toasts sit above the pill, and the footer leaves room for it. */
+/*Toasts sit above the pill, and the footer leaves room for it.*/
 .has-plan-pill .toast-region { bottom: calc(var(--space-lg) + 4rem); }
 .has-plan-pill .site-footer { padding-bottom: 4.5rem; }
 
-/* ---------- Illustrations (empty states) ---------- */
+/*--- Illustrations (empty states) ---*/
 .il-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .il-fill { fill: var(--color-surface-raised); }
 .il-accent { stroke: var(--color-primary); }

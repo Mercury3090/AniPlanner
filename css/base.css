@@ -1,15 +1,17 @@
-/* Reset, typography, layout primitives and accessibility helpers. */
+/*Reset, typography, layout primitives and accessibility helpers.*/
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+/*Stops text resizing on iOS and makes anchor links scroll smoothly.*/
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
 }
 
+/*Page colours and font, laid out so the footer stays at the bottom.*/
 body {
   margin: 0;
   min-height: 100vh;
@@ -22,10 +24,12 @@ body {
   line-height: var(--lh-body);
 }
 
+/*Main fills the space so the footer sits at the bottom.*/
 main {
   flex: 1;
 }
 
+/*Shared heading look: font, colour and spacing.*/
 h1,
 h2,
 h3 {
@@ -33,35 +37,51 @@ h3 {
   font-family: var(--font-heading);
   color: var(--color-text);
 }
+/*Size of the main page heading.*/
 h1 { font-size: var(--text-h1); line-height: var(--lh-h1); font-weight: 600; }
+/*Size of section headings.*/
 h2 { font-size: var(--text-h2); line-height: var(--lh-h2); font-weight: 600; }
+/*Size of smaller headings.*/
 h3 { font-size: var(--text-h3); line-height: var(--lh-h3); font-weight: 500; }
 
+/*Paragraph spacing.*/
 p { margin: 0 0 var(--space-md); }
+/*Small, muted helper text.*/
 .caption { font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--color-text-muted); }
+/*Muted text colour.*/
 .muted { color: var(--color-text-muted); }
 
+/*Links use the amber accent colour.*/
 a { color: var(--color-accent); }
+/*Thicker underline when hovering a link.*/
 a:hover { text-decoration-thickness: 2px; }
 
+/*Images and icons never grow wider than their container.*/
 img,
 svg { max-width: 100%; }
+/*Images are blocks so there is no stray gap under them.*/
 img { display: block; }
 
+/*Form controls use the page font and colour*/
 button,
 input,
 select { font: inherit; color: inherit; }
+/*Buttons show the pointer cursor.*/
 button { cursor: pointer; }
 
+/*Default list indentation.*/
 ul, ol { padding-left: 1.25rem; }
 
-/* Layout */
+/*Layout*/
 .container {
   width: min(100% - 2 * var(--page-margin), var(--layout-max));
   margin-inline: auto;
 }
+/*Vertical padding for the main area of every page.*/
 .page { padding-block: var(--space-xl) var(--space-2xl); }
+/*Spacing between page sections.*/
 .section { margin-block: var(--space-2xl); }
+/*Section heading with a link on the right.*/
 .section__header {
   display: flex;
   align-items: baseline;
@@ -70,10 +90,12 @@ ul, ol { padding-left: 1.25rem; }
   flex-wrap: wrap;
 }
 
+/*Adds even spacing between stacked children.*/
 .stack > * + * { margin-top: var(--space-md); }
+/*Lays items in a wrapping row with gaps.*/
 .cluster { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; }
 
-/* Accessibility helpers */
+/*Accessibility helpers*/
 .visually-hidden {
   position: absolute !important;
   width: 1px;
@@ -86,6 +108,7 @@ ul, ol { padding-left: 1.25rem; }
   border: 0;
 }
 
+/*Skip link: hidden until it's focused.*/
 .skip-link {
   position: absolute;
   left: var(--space-md);
@@ -98,16 +121,21 @@ ul, ol { padding-left: 1.25rem; }
   font-weight: 600;
   text-decoration: none;
 }
+/*Slides the skip link into view when focused.*/
 .skip-link:focus { top: var(--space-sm); }
 
+/*Visible focus ring for keyboard users on every control.*/
 :focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
+/*No outline on main when focus is moved to it.*/
 main:focus { outline: none; }
 
+/*Makes the hidden attribute always hide an element.*/
 [hidden] { display: none !important; }
 
+/*No smooth scrolling if reduced motion is on.*/
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *,

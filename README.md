@@ -2,6 +2,8 @@
 
 AniPlanner helps anime fans choose what they feel like watching, shows exactly how long it will take, and turns their picks into an evening-by-evening schedule with a finish date.
 
+Live site: https://mercury3090.github.io/AniPlanner/
+
 Built for Interactive Media 3B (Advanced Web Development with GSAP). It implements the design and technical specification (PRD) submitted for Assignment 4.
 
 ## Pages

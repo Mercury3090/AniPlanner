@@ -1,6 +1,5 @@
-// Home page. Two independent requests: three popular posters for the hero, and
-// what is airing now. Each can fail without affecting the other or the rest of
-// the page, and the page never makes more than these two calls.
+//Home page. Two independent requests: three popular posters for the hero, and what is airing now. Each can fail without affecting the other or the rest of
+//the page, and the page never makes more than these two calls.
 
 import { api, describeError } from "../api.js";
 import { isInDraft, onChange } from "../storage.js";
@@ -21,8 +20,9 @@ const el = {
 
 const state = { airing: [], seen: new Set() };
 
-/* ---------- Hero posters ---------- */
+/*--- Hero posters ---*/
 
+//one hero poster
 function posterItemHTML(item) {
   const media = item.image
     ? `<img src="${escapeHtml(item.image)}" alt="Poster for ${escapeHtml(item.title)}" width="300" height="450" decoding="async">`
@@ -30,17 +30,20 @@ function posterItemHTML(item) {
   return `<li class="hero-poster">${media}</li>`;
 }
 
+//fake loading posters
 function showPosterSkeletons() {
   el.posters.innerHTML = Array.from({ length: HERO_COUNT }, () => `<li class="hero-poster" aria-hidden="true"><span class="skeleton skeleton--poster" style="width:100%"></span></li>`).join("");
   el.posters.setAttribute("aria-busy", "true");
 }
 
+//plain poster shapes if the posters can't load
 function showPosterPlaceholders() {
-  // If the request fails the hero still looks complete, and the text carries the meaning.
+  //If the request fails the hero still looks complete, and the text carries the meaning.
   el.posters.innerHTML = Array.from({ length: HERO_COUNT }, () => `<li class="hero-poster" aria-hidden="true">${placeholderHTML()}</li>`).join("");
   el.posters.setAttribute("aria-hidden", "true");
 }
 
+//loads the popular anime for the hero
 async function loadHero() {
   showPosterSkeletons();
   try {
@@ -61,12 +64,14 @@ async function loadHero() {
   }
 }
 
-/* ---------- Airing now ---------- */
+/*--- Airing now ---*/
 
+//draw the Airing now cards
 function renderAiring() {
   el.airing.innerHTML = state.airing.map((item) => animeCardHTML(item, { inPlan: isInDraft(item.id) })).join("");
 }
 
+//loads Airing now (loading, error, empty)
 async function loadAiring() {
   el.banner.innerHTML = "";
   el.empty.innerHTML = "";
@@ -102,7 +107,7 @@ async function loadAiring() {
   }
 }
 
-/* ---------- Events ---------- */
+/*--- Events ---*/
 
 el.banner.addEventListener("click", (event) => {
   if (event.target.closest('[data-action="retry-airing"]')) loadAiring();
@@ -118,7 +123,7 @@ el.airing.addEventListener("click", (event) => {
   }
 });
 
-// Keep every Add button in step with the plan, including Undo and changes from other tabs.
+//Keep every Add button in step with the plan, including Undo and changes from other tabs.
 onChange(() => {
   for (const button of el.airing.querySelectorAll("[data-add]")) {
     const id = Number(button.dataset.add);
@@ -138,9 +143,9 @@ el.posters.addEventListener(
   true
 );
 
-/* ---------- Start ---------- */
+/*--- Start ---*/
 
-loadHero(); // puts the poster skeletons in place, so the reveal below has something to animate
+loadHero(); //puts the poster skeletons in place, so the reveal below has something to animate
 revealHero();
 revealOnScroll(document.querySelectorAll(".step"));
 loadAiring();

@@ -1,7 +1,5 @@
-// Planner page. Shows the titles in the plan, lets the user pick their evenings and
-// hours, and calculates total runtime, evenings needed and a finish date.
-// The maths lives in planner-core.js; this file only reads the plan, fetches the
-// titles, and draws the result.
+//Planner page. Shows the titles in the plan, lets the user pick their evenings, hours, and calculates total runtime, evenings needed and a finish date.
+//The maths lives in planner-core.js; this file only reads the plan, fetches the titles, and draws the result.
 
 import { api, describeError } from "../api.js";
 import { addToDraft, findSavedPlan, getDraft, moveInDraft, onChange, removeFromDraft, saveDraft, savePlan, storageAvailable } from "../storage.js";
@@ -51,24 +49,24 @@ const el = {
 };
 
 const state = {
-  seenRows: new Set(), // title ids whose row has already animated in
-  stopSorting: () => {}, // removes dragging from the list
-  counts: { minutes: 0, evenings: 0 }, // what the summary last showed, so numbers count from there
+  seenRows: new Set(),                     //title ids whose row has already animated in
+  stopSorting: () => {},                   //removes dragging from the list
+  counts: { minutes: 0, evenings: 0 },     //what the summary last showed, so numbers count from there
   skipScheduleAnimation: false,
-  summary: null, // totals from the latest render, saved with a plan
-  items: new Map(), // id -> normalised title
-  pending: new Set(), // ids being fetched
-  failures: new Map(), // id -> ApiError
+  summary: null,                           //totals from the latest render, saved with a plan
+  items: new Map(),                        //id -> normalised title
+  pending: new Set(),                      //ids being fetched
+  failures: new Map(),                     //id -> ApiError
   showAllEvenings: false,
   ignoreNextChange: false,
   focusIndex: null,
 };
 
-/* ---------- Small helpers ---------- */
+/*--- Small helpers ---*/
 
 const lastHTML = new WeakMap();
 
-/** Writes markup only when it changed, so screen readers aren't re-announcing and focus isn't lost. */
+//Writes markup only when it changed, so screen readers aren't re-announcing and focus isn't lost.
 function setHTML(node, html) {
   if (lastHTML.get(node) === html) return false;
   node.innerHTML = html;
@@ -76,8 +74,9 @@ function setHTML(node, html) {
   return true;
 }
 
-/* ---------- Loading titles ---------- */
+/*--- Loading titles ---*/
 
+//load one title in the plan
 async function fetchTitle(id) {
   state.pending.add(id);
   state.failures.delete(id);
@@ -92,20 +91,23 @@ async function fetchTitle(id) {
   }
 }
 
+//load any titles we don't have yet
 function ensureLoaded() {
   for (const id of getDraft().titleIds) {
     if (!state.items.has(id) && !state.pending.has(id) && !state.failures.has(id)) fetchTitle(id);
   }
 }
 
-/* ---------- Controls ---------- */
+/*--- Controls ---*/
 
+//draw the weekday buttons
 function renderControls() {
   el.dayChips.innerHTML = WEEK.map(
     ({ day, label, name }) => `<button type="button" class="chip" data-day="${day}" aria-pressed="false" aria-label="${name}">${label}</button>`
   ).join("");
 }
 
+//match the weekday buttons and hours to the plan
 function syncControls() {
   const draft = getDraft();
   for (const chip of el.dayChips.querySelectorAll(".chip")) {
@@ -116,6 +118,7 @@ function syncControls() {
   el.hoursUp.disabled = draft.hoursPerEvening >= MAX_HOURS;
 }
 
+//show or clear the weekday hint
 function setDaysHint(message) {
   el.daysHint.hidden = !message;
   el.daysHint.textContent = message;
@@ -141,10 +144,11 @@ for (const button of [el.hoursDown, el.hoursUp]) {
   });
 }
 
-/* ---------- Save area: "Save plan", or "Saved" once an identical plan exists ---------- */
+/*--- Save area: "Save plan", or "Saved" once an identical plan exists ---*/
 
+//Save plan button, or the Saved message if it's already saved
 function renderSaveArea(isEmpty) {
-  if (el.save.getAttribute("aria-busy") === "true") return; // mid-save: leave the button alone
+  if (el.save.getAttribute("aria-busy") === "true") return;     //mid-save: leave the button alone
   const saved = isEmpty ? null : findSavedPlan();
   el.saveName.hidden = Boolean(saved);
   el.savedState.hidden = !saved;
@@ -160,9 +164,8 @@ function renderSaveArea(isEmpty) {
   el.save.toggleAttribute("aria-disabled", unavailable);
 }
 
-/* ---------- Summary: numbers count up, and the result is announced once ---------- */
-
-/** Counts the two numbers up from what the summary showed before. */
+/*--- Summary: numbers count up, and the result is announced once ---*/
+//Counts the two numbers up from what the summary showed before.
 function animateSummary(next) {
   for (const dd of el.summary.querySelectorAll("[data-count]")) {
     const kind = dd.dataset.count;
@@ -172,10 +175,8 @@ function animateSummary(next) {
   state.counts = next;
 }
 
-/**
- * Screen readers hear the finished result once, from a hidden message. The visible
- * numbers are not a live region, so counting up never reads out every step.
- */
+//Screen readers hear the finished result once, from a hidden message. The visible numbers are not a live region, so counting up never reads out every step.
+ 
 function announceSummary(isEmpty) {
   if (isEmpty) {
     el.announce.textContent = "";
@@ -185,8 +186,9 @@ function announceSummary(isEmpty) {
   el.announce.textContent = `${values.join(". ")}.`;
 }
 
-/* ---------- Rendering ---------- */
+/*--- Rendering ---*/
 
+//one title row
 function titleRowHTML(item, sort) {
   const { meta, total } = runtimeLines(item);
   const title = escapeHtml(item.title);
@@ -207,6 +209,7 @@ function titleRowHTML(item, sort) {
     </li>`;
 }
 
+//fake loading row
 function skeletonRowHTML() {
   return `
     <li class="title-row" aria-hidden="true">
@@ -219,6 +222,7 @@ function skeletonRowHTML() {
     </li>`;
 }
 
+//row for a title that couldn't load
 function failedRowHTML(id, error) {
   const gone = error.kind === "not-found";
   const message = gone ? "This title is no longer available." : describeError(error);
@@ -234,6 +238,7 @@ function failedRowHTML(id, error) {
     </li>`;
 }
 
+//summary: total runtime, evenings and finish date
 function summaryHTML({ totals, evenings, truncated, failedCount, pendingCount }) {
   const hasTotal = totals.totalMinutes > 0 && evenings.length > 0;
   const finish = finishDateOf(evenings);
@@ -265,6 +270,7 @@ function summaryHTML({ totals, evenings, truncated, failedCount, pendingCount })
   return `<dl class="summary">${rows}</dl>${noteHTML}`;
 }
 
+//one evening in the schedule
 function eveningHTML(evening, index, perEvening) {
   const percent = Math.min(100, Math.round((evening.minutes / perEvening) * 100));
   const what = evening.segments.map((s) => `${escapeHtml(s.title)} (${formatMinutes(s.minutes)})`).join(", ");
@@ -277,16 +283,17 @@ function eveningHTML(evening, index, perEvening) {
     </li>`;
 }
 
+//redraw the whole planner
 function render() {
   const draft = getDraft();
   const ids = draft.titleIds;
   const isEmpty = ids.length === 0;
-  // Reordering is offered once every title has loaded and there is more than one.
+  //Reordering is offered once every title has loaded and there is more than one.
   const canSort = ids.length >= 2 && state.pending.size === 0 && ids.every((id) => state.items.has(id));
 
   syncControls();
 
-  // Remember which button had focus, so a re-render doesn't drop it.
+  //Remember which button had focus, so a re-render doesn't drop it.
   const active = document.activeElement;
   const focusKey = active?.closest?.("#title-list")
     ? active.dataset.remove
@@ -298,7 +305,7 @@ function render() {
           : null
     : null;
 
-  // Titles
+  //Titles
   const listChanged = setHTML(el.list, ids
     .map((id, index) => {
       if (state.items.has(id)) return titleRowHTML(state.items.get(id), canSort ? { position: index + 1, total: ids.length } : null);
@@ -307,9 +314,9 @@ function render() {
     })
     .join(""));
   if (listChanged) {
-    // Rows that are new slide in; rows already seen (including after a reorder) do not replay.
+    //Rows that are new slide in; rows already seen (including after a reorder) do not replay.
     revealCards(el.list, state.seenRows, { item: ".title-row", id: (row) => row.dataset.id, scroll: false });
-    // Dragging is rebuilt for the rows now on the page.
+    //Dragging is rebuilt for the rows now on the page.
     state.stopSorting();
     state.stopSorting = canSort ? makeSortable(el.list, commitMove) : () => {};
     if (focusKey) el.list.querySelector(focusKey)?.focus();
@@ -326,7 +333,7 @@ function render() {
       })
     : "");
 
-  // Summary and schedule
+  //Summary and schedule
   const loaded = ids.filter((id) => state.items.has(id)).map((id) => state.items.get(id));
   const totals = planTotals(loaded, draft.hoursPerEvening);
   const { evenings, truncated } = buildSchedule(totals.entries, totals.minutesPerEvening, draft.days, new Date());
@@ -342,7 +349,7 @@ function render() {
 
   const summaryChanged = setHTML(el.summary, isEmpty ? `<p class="muted">Your totals will appear here once you add a title.</p>` : summaryHTML({ totals, evenings, truncated, failedCount, pendingCount }));
   if (summaryChanged && pendingCount === 0) {
-    announceSummary(isEmpty); // read the final numbers first, before anything starts counting
+    announceSummary(isEmpty);        //read the final numbers first, before anything starts counting
     animateSummary(totals.totalMinutes > 0 && evenings.length > 0 ? { minutes: totals.totalMinutes, evenings: evenings.length } : { minutes: 0, evenings: 0 });
   }
   renderSaveArea(isEmpty);
@@ -361,7 +368,7 @@ function render() {
     el.scheduleToggle.textContent = state.showAllEvenings ? "Show fewer evenings" : `Show all ${evenings.length} evenings`;
   }
 
-  // Keep keyboard focus sensible after a title is removed.
+  //Keep keyboard focus sensible after a title is removed.
   if (state.focusIndex !== null) {
     const buttons = el.list.querySelectorAll("[data-remove]");
     const target = buttons[Math.min(state.focusIndex, buttons.length - 1)];
@@ -370,21 +377,21 @@ function render() {
   }
 }
 
-/* ---------- Events ---------- */
+/*--- Events ---*/
 
 el.list.addEventListener("click", (event) => {
   const remove = event.target.closest("[data-remove]");
   if (remove) {
     const id = Number(remove.dataset.remove);
     const row = remove.closest(".title-row");
-    if (row.dataset.leaving) return; // already on its way out
+    if (row.dataset.leaving) return;         //already on its way out
     row.dataset.leaving = "1";
     state.focusIndex = [...el.list.querySelectorAll("[data-remove]")].indexOf(remove);
     const item = state.items.get(id);
 
-    // The row eases out first, then the title is really removed.
+    //The row eases out first, then the title is really removed.
     exitItems([row], () => {
-      state.seenRows.delete(String(id)); // so Undo brings the row back with the entrance animation
+      state.seenRows.delete(String(id));      //so Undo brings the row back with the entrance animation
       if (item) {
         if (!togglePlan(item).ok) state.focusIndex = null;
       } else {
@@ -393,7 +400,7 @@ el.list.addEventListener("click", (event) => {
         else showToast("Removed from your plan", { tone: "removed", action: { label: "Undo", onClick: () => addToDraft(id, { index: result.index }) } });
       }
       if (row.isConnected) {
-        // Nothing was removed (storage blocked): bring the row back.
+        //Nothing was removed (storage blocked): bring the row back.
         delete row.dataset.leaving;
         render();
         state.seenRows.add(String(id));
@@ -408,14 +415,15 @@ el.list.addEventListener("click", (event) => {
   }
 });
 
-/* ---------- Reordering: by dragging a handle, or with the arrow keys ---------- */
+/*--- Reordering: by dragging a handle, or with the arrow keys ---*/
 
+//tell screen readers a title moved
 function announceMove(id, result) {
   const item = state.items.get(id);
   el.reorderAnnounce.textContent = item && result.moved ? `Moved ${item.title} to position ${result.to + 1} of ${getDraft().titleIds.length}.` : "";
 }
 
-/** Called when a drag ends in a new position. */
+//Called when a drag ends in a new position.
 function commitMove(idText, toIndex) {
   const id = Number(idText);
   const result = moveInDraft(id, toIndex);
@@ -443,12 +451,12 @@ el.list.addEventListener("keydown", (event) => {
     el.banners.innerHTML = bannerHTML({ tone: "error", message: "Couldn't change the order. Storage may be blocked." });
     return;
   }
-  announceMove(id, result); // the list redraws and focus returns to this title's handle
+  announceMove(id, result);       //the list redraws and focus returns to this title's handle
 });
 
 el.scheduleToggle.addEventListener("click", () => {
   state.showAllEvenings = !state.showAllEvenings;
-  state.skipScheduleAnimation = true; // expanding the list is not a change to the plan
+  state.skipScheduleAnimation = true;           //expanding the list is not a change to the plan
   render();
 });
 
@@ -457,7 +465,7 @@ el.save.addEventListener("click", () => {
   el.save.setAttribute("aria-busy", "true");
   el.save.innerHTML = `${icon("loader", { className: "icon--spin" })}Saving`;
 
-  // A short pause so the user sees the save happen.
+  //A short pause so the user sees the save happen.
   window.setTimeout(() => {
     state.ignoreNextChange = true;
     const result = savePlan(el.planName.value, state.summary);
@@ -469,7 +477,7 @@ el.save.addEventListener("click", () => {
       return;
     }
     el.planName.value = "";
-    renderSaveArea(false); // now shows "Saved" with the plan's name
+    renderSaveArea(false);          //now shows "Saved" with the plan's name
     el.banners.innerHTML = bannerHTML({
       tone: "success",
       message: `Plan saved as "${result.plan.name}".`,
@@ -481,7 +489,7 @@ el.save.addEventListener("click", () => {
 });
 
 el.clear.addEventListener("click", () => {
-  state.focusIndex = 0; // lands on the heading once the list is empty
+  state.focusIndex = 0;           //lands on the heading once the list is empty
   const rows = el.list.querySelectorAll(".title-row");
   exitItems(rows, () => {
     state.seenRows.clear();
@@ -494,7 +502,7 @@ el.clear.addEventListener("click", () => {
   }, { x: 24, y: 0 });
 });
 
-// Any change to the plan (here, on another page, or in another tab) refreshes the page.
+//Any change to the plan (here, on another page, or in another tab) refreshes the page.
 onChange(() => {
   if (state.ignoreNextChange) {
     state.ignoreNextChange = false;
@@ -507,7 +515,7 @@ onChange(() => {
 
 attachImageFallback(el.list);
 
-/* ---------- Start ---------- */
+/*--- Start ---*/
 
 if (!storageAvailable()) {
   el.banners.innerHTML = bannerHTML({

@@ -1,5 +1,4 @@
-// Anime detail page. Loads one title by ?id=, shows the runtime strip, synopsis,
-// trailer, genres and related titles, and handles loading, error and not-found states.
+//Anime detail page. Loads one title by ?id=, shows the runtime strip, synopsis, trailer, genres and related titles, and handles loading, error and not-found states.
 
 import { api, describeError } from "../api.js";
 import { getDraft, isInDraft, onChange } from "../storage.js";
@@ -23,8 +22,9 @@ const el = {
 
 const state = { id: null, item: null, controller: null, relatedController: null, synopsisExpanded: false };
 
-/* ---------- Back link: return to Discover with the filters the user had ---------- */
+/*--- Back link: return to Discover with the filters the user had ---*/
 
+//Back goes to Discover with the same filters if you came from there
 function setBackLink() {
   try {
     const ref = new URL(document.referrer);
@@ -32,12 +32,13 @@ function setBackLink() {
       el.back.href = ref.href;
     }
   } catch {
-    // No usable referrer: the link keeps its default of discover.html.
+    //No usable referrer: the link keeps its default of discover.html.
   }
 }
 
-/* ---------- Loading, error and not-found states ---------- */
+/*--- Loading, error and not-found states ---*/
 
+//fake loading version of the page while the anime loads
 function showSkeleton() {
   el.detail.innerHTML = `
     <div class="detail__hero" aria-hidden="true">
@@ -52,6 +53,7 @@ function showSkeleton() {
   el.detail.setAttribute("aria-busy", "true");
 }
 
+//shows the not-found message
 function showNotFound() {
   el.detail.innerHTML = "";
   el.detail.removeAttribute("aria-busy");
@@ -66,20 +68,23 @@ function showNotFound() {
   });
 }
 
+//error banner with a Retry button
 function showError(error) {
   el.detail.innerHTML = "";
   el.detail.removeAttribute("aria-busy");
   el.banners.innerHTML = bannerHTML({ tone: "error", message: describeError(error), actionLabel: "Retry", action: "retry" });
 }
 
-/* ---------- Rendering ---------- */
+/*--- Rendering ---*/
 
+//score badge, or 'No score yet' if there isn't one
 function scoreBadgeHTML(item) {
   return item.score == null
     ? `<span class="badge">No score yet</span>`
     : `<span class="badge">${icon("star")}<span class="visually-hidden">Score </span>${item.score.toFixed(2)}</span>`;
 }
 
+//the runtime section: episodes, minutes, total and evenings needed
 function runtimeHTML(item) {
   const hours = getDraft().hoursPerEvening;
   const { stats, note } = describeRuntime(item, hours);
@@ -95,6 +100,7 @@ function runtimeHTML(item) {
   return `<dl class="runtime-strip">${rows}</dl>${noteHTML}`;
 }
 
+//trailer section, YouTube links only
 function trailerHTML(item) {
   if (!item.trailerEmbedUrl || !isSafeTrailerUrl(item.trailerEmbedUrl)) return "";
   return `
@@ -108,6 +114,7 @@ function trailerHTML(item) {
     </section>`;
 }
 
+//genre tags
 function genresHTML(item) {
   if (!item.genres.length) return "";
   const tags = item.genres.map((g) => `<li class="tag">${escapeHtml(g.name)}</li>`).join("");
@@ -118,6 +125,7 @@ function genresHTML(item) {
     </section>`;
 }
 
+//draws the whole page, then starts the animation
 function renderItem(item) {
   state.item = item;
   state.synopsisExpanded = false;
@@ -156,8 +164,7 @@ function renderItem(item) {
       <div id="related-body"></div>
     </section>`;
 
-  // The skeleton fades out while the page arrives (poster, title, runtime strip, button),
-  // and the total runtime counts up as the strip appears.
+  //The skeleton fades out while the page arrives (poster, title, runtime strip, button), and the total runtime counts up as the strip appears.
   crossfade(
     el.detail,
     () => {
@@ -177,7 +184,7 @@ function renderItem(item) {
   loadRelated(item.id);
 }
 
-/** Shows Read more only when the synopsis is actually cut off. */
+//Shows Read more only when the synopsis is actually cut off.
 function updateSynopsisToggle() {
   const text = document.getElementById("synopsis");
   const toggle = document.getElementById("synopsis-toggle");
@@ -189,8 +196,9 @@ function updateSynopsisToggle() {
   toggle.hidden = text.scrollHeight <= text.clientHeight + 1;
 }
 
-/* ---------- Related titles ---------- */
+/*--- Related titles ---*/
 
+//one card in Related
 function relatedCardHTML(item) {
   const title = escapeHtml(item.title);
   const media = item.image ? `<img src="${escapeHtml(item.image)}" alt="" width="200" height="300" loading="lazy" decoding="async">` : placeholderHTML();
@@ -203,11 +211,13 @@ function relatedCardHTML(item) {
     </li>`;
 }
 
+//fake loading cards for Related
 function relatedSkeletonHTML() {
   const tile = `<li aria-hidden="true"><span class="related-card"><span class="skeleton skeleton--poster"></span><span class="skeleton skeleton--line" style="width:70%"></span></span></li>`;
   return `<ul class="related-grid">${tile.repeat(4)}</ul>`;
 }
 
+//Related loads last so a failure here doesn't break the page
 async function loadRelated(id) {
   const section = document.getElementById("related");
   const body = document.getElementById("related-body");
@@ -243,8 +253,9 @@ async function loadRelated(id) {
   }
 }
 
-/* ---------- Main load ---------- */
+/*--- Main load ---*/
 
+//loads the anime and handles loading, error and not found
 async function load() {
   state.controller?.abort();
   state.relatedController?.abort();
@@ -276,7 +287,7 @@ async function load() {
   }
 }
 
-/* ---------- Events ---------- */
+/*--- Events ---*/
 
 el.banners.addEventListener("click", (event) => {
   if (event.target.closest('[data-action="retry"]')) load();
@@ -309,7 +320,7 @@ el.detail.addEventListener("click", (event) => {
   }
 
   if (target.closest("#trailer-play") && state.item) {
-    // Only build the player when asked, so the page loads quickly.
+    //Only build the player when asked, so the page loads quickly.
     const slot = document.getElementById("trailer-slot");
     const iframe = document.createElement("iframe");
     iframe.className = "trailer trailer--playing";
@@ -328,7 +339,7 @@ el.detail.addEventListener("click", (event) => {
   }
 });
 
-// Keep the Add button and the evenings figure in step with the plan.
+//Keep the Add button and the evenings figure in step with the plan.
 onChange(() => {
   if (!state.item) return;
   const button = el.detail.querySelector("[data-add]");
@@ -340,7 +351,7 @@ onChange(() => {
   if (runtime) runtime.innerHTML = runtimeHTML(state.item);
 });
 
-// Fonts and window size can change how the synopsis wraps.
+//Fonts and window size can change how the synopsis wraps.
 const recheckSynopsis = debounce(updateSynopsisToggle, 150);
 window.addEventListener("resize", recheckSynopsis);
 document.fonts?.ready.then(updateSynopsisToggle);

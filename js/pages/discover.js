@@ -1,6 +1,5 @@
-// Discover page: search, mood and runtime filters, results grid, and all four
-// states (loading, success, error, empty). Filters live in the URL, so the back
-// link on the detail page returns here exactly as the user left it.
+//Discover page: search, mood and runtime filters, results grid, and all four states (loading, success, error, empty). Filters live in the URL, so the back
+//link on the detail page returns here exactly as the user left it.
 
 import { api, describeError } from "../api.js";
 import { MOODS, RUNTIME_RANGES, SORTS, findMood, findRange, findSort, matchesRuntime, resolveMoodGenres } from "../moods.js";
@@ -18,7 +17,7 @@ import {
 } from "../ui.js";
 
 const PAGE_SIZE = 24;
-const MIN_VISIBLE = 8; // keep fetching when a runtime range hides most of a page
+const MIN_VISIBLE = 8;               //keep fetching when a runtime range hides most of a page
 const MAX_AUTO_PAGES = 3;
 
 const el = {
@@ -51,18 +50,19 @@ const state = {
   items: [],
   loading: false,
   autoPages: 0,
-  moodGenres: [], // the genres of the chosen mood, main genre first
-  genreOverride: null, // set when the genres together matched nothing and one genre is used instead
-  moodNote: "", // what to tell the user when the mood could not be matched exactly
-  seen: new Set(), // ids whose card has already animated in
-  freshLoad: false, // true until the first render after a new search or filter
+  moodGenres: [],                 //the genres of the chosen mood, main genre first
+  genreOverride: null,            //set when the genres together matched nothing and one genre is used instead
+  moodNote: "",                   //what to tell the user when the mood could not be matched exactly
+  seen: new Set(),                //ids whose card has already animated in
+  freshLoad: false,               //true until the first render after a new search or filter
   controller: null,
   genres: null,
   lastError: null,
 };
 
-/* ---------- URL sync ---------- */
+/*--- URL sync ---*/
 
+//read the search and filters from the URL (so Back keeps them)
 function readUrl() {
   const params = new URLSearchParams(window.location.search);
   state.q = (params.get("q") ?? "").trim();
@@ -71,6 +71,7 @@ function readUrl() {
   state.sort = findSort(params.get("sort")).key;
 }
 
+//put the search and filters in the URL
 function writeUrl() {
   const params = new URLSearchParams();
   if (state.q) params.set("q", state.q);
@@ -81,12 +82,14 @@ function writeUrl() {
   window.history.replaceState(null, "", query ? `?${query}` : window.location.pathname);
 }
 
-/* ---------- Controls ---------- */
+/*--- Controls ---*/
 
+//one filter chip
 function chipHTML(key, label, pressed) {
   return `<button type="button" class="chip" data-key="${key}" aria-pressed="${pressed}">${label}</button>`;
 }
 
+//draw the chips and the sort menu
 function renderControls() {
   el.moods.innerHTML = MOODS.map((m) => chipHTML(m.key, m.label, state.mood === m.key)).join("");
   el.ranges.innerHTML = RUNTIME_RANGES.map((r) => chipHTML(r.key, r.label, state.runtime === r.key)).join("");
@@ -96,12 +99,14 @@ function renderControls() {
   updateFilterCount();
 }
 
+//number on the Filters button
 function updateFilterCount() {
   const count = Number(Boolean(state.mood)) + Number(Boolean(state.runtime));
   el.toggleCount.hidden = count === 0;
   el.toggleCount.textContent = String(count);
 }
 
+//show or clear the search error
 function setQueryError(message) {
   el.error.hidden = !message;
   el.error.innerHTML = message ? `<span aria-hidden="true">!</span> ${message}` : "";
@@ -109,18 +114,20 @@ function setQueryError(message) {
   else el.input.removeAttribute("aria-invalid");
 }
 
-/* ---------- Data ---------- */
+/*--- Data ---*/
 
+//get the genre list once, then reuse it
 async function ensureGenres(signal) {
   if (!state.genres) state.genres = await api.getGenres({ signal });
   return state.genres;
 }
 
+//work out what to ask the API for
 async function buildParams(page, signal) {
   const sort = findSort(state.sort);
   const params = { page, limit: PAGE_SIZE, signal };
   if (state.q.length >= 2) params.q = state.q;
-  // With a search term, "Popular" keeps Jikan's own best-match order.
+  //With a search term, "Popular" keeps Jikan's own best-match order.
   if (!(params.q && state.sort === "popular")) {
     params.orderBy = sort.orderBy;
     params.sort = sort.sort;
@@ -135,10 +142,12 @@ async function buildParams(page, signal) {
   return params;
 }
 
+//only the loaded anime that fit the runtime filter
 function visibleItems() {
   return state.items.filter((item) => matchesRuntime(item, state.runtime));
 }
 
+//loads results (or more, with Load more) and handles loading, error and empty
 async function load({ append = false } = {}) {
   state.controller?.abort();
   const controller = new AbortController();
@@ -172,8 +181,7 @@ async function load({ append = false } = {}) {
     let result = await api.searchAnime(params);
     if (controller.signal.aborted) return;
 
-    // A title must have EVERY genre of a mood, so a mood can match nothing. When that happens,
-    // try its genres one at a time (main genre first) rather than showing a dead end.
+    //A title must have EVERY genre of a mood, so a mood can match nothing. When that happens, try its genres one at a time (main genre first) rather than showing a dead end.
     if (!append && state.mood) {
       const mood = findMood(state.mood);
       if (state.moodGenres.length === 0) {
@@ -219,7 +227,7 @@ async function load({ append = false } = {}) {
   }
 }
 
-/** When a runtime range hides most of a page, quietly fetch more so the grid is not empty. */
+//When a runtime range hides most of a page, quietly fetch more so the grid is not empty.
 async function ensureEnough() {
   const clientRange = state.runtime && !findRange(state.runtime)?.server;
   if (!clientRange || state.loading) return;
@@ -228,15 +236,17 @@ async function ensureEnough() {
   await load({ append: true });
 }
 
-/* ---------- Rendering ---------- */
+/*--- Rendering ---*/
 
+//draws the cards, notes, errors, empty state and Load more
 function render({ focusId } = {}) {
   const items = visibleItems();
+  //put the cards on the page
   const paint = () => {
     el.results.innerHTML = items.map((item) => animeCardHTML(item, { inPlan: isInDraft(item.id) })).join("");
   };
-  // The first render after a new search: the skeleton fades out while the cards rise in.
-  // Later renders (Load more, filter chips) only animate cards that are new.
+  //The first render after a new search: the skeleton fades out while the cards rise in.
+  //Later renders (Load more, filter chips) only animate cards that are new.
   if (state.freshLoad) crossfade(el.results, paint, { fadeContent: false });
   else paint();
   state.freshLoad = false;
@@ -290,8 +300,9 @@ function render({ focusId } = {}) {
   }
 }
 
-/* ---------- Events ---------- */
+/*--- Events ---*/
 
+//new search from page 1
 function resetAndLoad() {
   writeUrl();
   updateFilterCount();
@@ -342,6 +353,7 @@ el.clear.addEventListener("click", () => {
   }
 });
 
+//switch a chip on or off
 function toggleChip(group, key, current) {
   const next = current === key ? "" : key;
   for (const chip of group.querySelectorAll(".chip")) chip.setAttribute("aria-pressed", String(chip.dataset.key === next));
@@ -388,6 +400,7 @@ el.more.addEventListener("click", () => {
   load({ append: true });
 });
 
+//back to no search and no filters
 function clearFilters() {
   state.q = "";
   state.mood = "";
@@ -397,6 +410,7 @@ function clearFilters() {
   resetAndLoad();
 }
 
+//Retry, Load more and Clear filters clicks
 function handleAction(event) {
   const button = event.target.closest("[data-action]");
   if (!button) return;
@@ -419,7 +433,7 @@ function handleAction(event) {
 el.banners.addEventListener("click", handleAction);
 el.empty.addEventListener("click", handleAction);
 
-// Add to plan / Remove from plan
+//Add to plan / Remove from plan
 el.results.addEventListener("click", (event) => {
   const button = event.target.closest("[data-add]");
   if (!button) return;
@@ -431,7 +445,7 @@ el.results.addEventListener("click", (event) => {
   }
 });
 
-// Keep every Add button in step with the plan, including changes from Undo or other tabs.
+//Keep every Add button in step with the plan, including changes from Undo or other tabs.
 onChange(() => {
   for (const button of el.results.querySelectorAll("[data-add]")) {
     const id = Number(button.dataset.add);
@@ -443,7 +457,7 @@ onChange(() => {
 
 attachImageFallback(el.results);
 
-/* ---------- Start ---------- */
+/*--- Start ---*/
 
 readUrl();
 renderControls();
